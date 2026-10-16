@@ -2135,3 +2135,20 @@ button.wl-summary{width:100%;padding:0 0 10px;text-align:start;border-radius:var
 [dir="rtl"] *{letter-spacing:0}
 .exfix-link{display:inline-flex;align-items:center;gap:5px;margin:14px 0 4px;color:var(--label-3);text-decoration:none}
 .list .similar-label{margin:16px 2px 6px;grid-column:1/-1}
+
+/* ---- Nutrition view ---- */
+.nutrition .nut-bars { display: flex; flex-direction: column; gap: 14px; }
+.nut-bar-head { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; margin-bottom: 5px; }
+.nut-bar-label { font-weight: 600; }
+.nut-bar.primary .nut-bar-label { font-size: 1.05em; }
+.nut-bar-val { color: var(--label-2); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.nut-track { height: 8px; border-radius: 6px; background: var(--sep); overflow: hidden; }
+.nut-bar.primary .nut-track { height: 11px; }
+.nut-fill { height: 100%; border-radius: 6px; transition: width .3s ease; }
+.nut-bar-sub { margin-top: 4px; font-size: .82em; color: var(--label-3); }
+.nut-entry-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 14px; }
+.nut-entry-grid label { display: flex; flex-direction: column; gap: 5px; }
+.nut-entry-grid label span { font-size: .85em; color: var(--label-2); }
+.nut-weight-now { font-size: 1.8em; font-weight: 700; letter-spacing: -.02em; margin-bottom: 8px; }
+.nut-adh { display: flex; flex-wrap: wrap; gap: 20px; }
+.nut-adh b { font-size: 1.35em; font-weight: 700; }

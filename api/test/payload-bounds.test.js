@@ -4,7 +4,11 @@
  * or from the synced state, and a client can put megabytes in either. The Coach runs on the
  * instance's own key, so an unbounded field is a bill someone else pays. These tests feed the
  * builder far more than any screen allows, through both doors, and check what comes out. */
-import test from 'node:test';
+import test, { mock } from 'node:test';
+// The sample workouts are dated July 2026 and the review window reaches back MAX_WEEKS from
+// today, so on a real clock these tests stopped finding them once the calendar moved past
+// mid-October. Pin "today" to when the fixtures were written; only Date is faked.
+mock.timers.enable({ apis: ['Date'], now: new Date('2026-08-01T12:00:00Z') });
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import { tempData, sampleState } from './helpers.mjs';

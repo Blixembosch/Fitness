@@ -69,6 +69,52 @@ export function daySummary(entry = {}, targets = {}) {
   return out
 }
 
+const ISO = /^\d{4}-\d{2}-\d{2}$/
+const isMap = v => v && typeof v === 'object' && !Array.isArray(v)
+const NUTRIENTS = ['kcal', 'protein', 'carbs', 'fat', 'fiber', 'sugar', 'satFat', 'sodium']
+
+/** One day's entry from S.nutrition, or null. */
+export const nutritionOf = (S, iso) => (isMap(S?.nutrition) && isMap(S.nutrition[iso]) ? S.nutrition[iso] : null)
+
+/**
+ * S.nutrition with `iso` set to `fields`, stamped `now` — the dayNotes pattern, so each day merges
+ * on its own `_ts` (lib/sync-merge STAMPED_MAPS). Only known nutrient keys with a finite value are
+ * kept; an entry with none becomes a cleared `{ _ts }` so a deletion syncs. Returns a new map.
+ */
+export function withNutrition(map, iso, fields, now = Date.now()) {
+  const entry = { _ts: now }
+  for (const k of NUTRIENTS) {
+    const v = Number(fields?.[k])
+    if (Number.isFinite(v)) entry[k] = Math.round(v * 10) / 10
+  }
+  return { ...(isMap(map) ? map : {}), [iso]: entry }
+}
+
+/** Merge many parsed days (e.g. a Cronometer import) into the map, each stamped `now`. A day the
+ *  map already holds with a newer `_ts` (edited by hand since) is left alone. Returns a new map. */
+export function mergeNutritionDays(map, days = [], now = Date.now()) {
+  const out = { ...(isMap(map) ? map : {}) }
+  let added = 0, updated = 0
+  for (const d of days) {
+    if (!d || !ISO.test(d.date)) continue
+    const cur = isMap(out[d.date]) ? out[d.date] : null
+    if (cur && (Number(cur._ts) || 0) > now) continue
+    const next = withNutrition(out, d.date, d, now)[d.date]
+    if (cur) updated++; else added++
+    out[d.date] = next
+  }
+  return { map: out, added, updated }
+}
+
+/** Logged days as a sorted array [{ date, kcal, protein, ... }], newest last; cleared entries out. */
+export function nutritionDays(S) {
+  const m = isMap(S?.nutrition) ? S.nutrition : {}
+  return Object.entries(m)
+    .filter(([date, e]) => ISO.test(date) && isMap(e) && (e.kcal != null || e.protein != null))
+    .map(([date, e]) => ({ date, ...e }))
+    .sort((a, b) => a.date.localeCompare(b.date))
+}
+
 // Protein hit-rate over a set of day entries — the headline muscle-preservation metric.
 // Returns { days, metDays, avgProtein, avgKcal } ignoring days with no entry.
 export function proteinAdherence(days = [], proteinTarget) {

@@ -91,6 +91,10 @@ export const DEF = {
   // A note per day off (#261): { [iso]: { tag, text, _ts } } (lib/day-notes.js). A noted day is
   // excused from the missed-day nudge; each day merges on its own stamp (lib/sync-merge.js).
   dayNotes: {},
+  // Daily nutrition (Cronometer import or quick entry): { [iso]: { kcal, protein, carbs, fat, _ts } },
+  // merged per day on its own stamp like dayNotes (lib/sync-merge.js STAMPED_MAPS). Targets are the
+  // goal line the Nutrition view fills against; protein is the muscle-preservation anchor.
+  nutrition: {}, nutritionTargets: { kcal: 1810, protein: 152, carbs: 166, fat: 60 },
   // Body measurements (#82): one check-in per day, values in cm whatever the weight unit
   // (lib/measurements.js); merged across devices like weigh-ins (lib/sync-merge.js).
   measurements: [], measurementEnabled: null, customMeasurements: [],
