@@ -1,4 +1,8 @@
-import test from 'node:test';
+import test, { mock } from 'node:test';
+// The sample workouts are dated July 2026 and the review window reaches back MAX_WEEKS from
+// today, so on a real clock these tests stopped finding them once the calendar moved past
+// mid-October. Pin "today" to when the fixtures were written; only Date is faked.
+mock.timers.enable({ apis: ['Date'], now: new Date('2026-08-01T12:00:00Z') });
 import assert from 'node:assert/strict';
 import { tempData, sampleState } from './helpers.mjs';
 
