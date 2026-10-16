@@ -20,6 +20,7 @@ import { startCadence } from './coach/cadence.js';
 import { startWarmup } from './coach/warmup.js';
 import { dayReminderPush, nudgePush, restTimerPush, testPush } from './push-messages.js';
 import { verifyError } from './verify-error.js';
+import { ingestPayload, readIngestPayload, normalizeWeighIn, applyWeighIn } from './ingest.js';
 import {
   hashPassword, verifyPassword, needsRehash, passwordProblem, passwordLength, nameKey, BusyError,
   MIN_LENGTH, MAX_LENGTH, makeResetCode, hashResetCode, resetCodeMatches, RESET_TTL_MS, warmUp,
@@ -1911,6 +1912,54 @@ const routes = {
   'GET /api/health': async (req, res) => {
     if (!dataWritable()) return json(res, 503, { ok: false, writable: false });
     json(res, 200, { ok: true, users: db.users.length, writable: true });
+  },
+
+  // The ingest token for this profile: a stateless HMAC token (ingest:<uid>:<iv>) an iOS
+  // Shortcut carries as a Bearer to POST /api/ingest/weight, so Apple Health weight lands here
+  // without a browser session. GET returns the current token and the URL to post to; POST with
+  // { rotate: true } bumps the profile's `iv`, which makes every token handed out before stop
+  // verifying — the way to revoke one that leaked.
+  'GET /api/account/ingest-token': async (req, res) => {
+    const user = readSession(req);
+    if (!user) return json(res, 401, { error: 'not signed in' });
+    json(res, 200, { token: sign(ingestPayload(user.id, user.iv || 0)), url: ORIGIN + '/api/ingest/weight' });
+  },
+  'POST /api/account/ingest-token': async (req, res) => {
+    const user = readSession(req);
+    if (!user) return json(res, 401, { error: 'not signed in' });
+    const body = await readBody(req);
+    if (body && body.rotate === true) { user.iv = (user.iv || 0) + 1; saveDb(); }
+    json(res, 200, { token: sign(ingestPayload(user.id, user.iv || 0)), url: ORIGIN + '/api/ingest/weight' });
+  },
+
+  // Post a body-weight reading with the ingest token (no session). Body: { w, d?, unit? } — w in
+  // the profile's unit unless `unit` ('kg'|'lb') says otherwise, d an ISO date defaulting to today
+  // (UTC). The reading is merged into the profile's weigh-ins as a stamped {d,w,t} entry, so the
+  // next device sync keeps it (lib/sync-merge mergeBodyweight). One entry per day, idempotent.
+  'POST /api/ingest/weight': async (req, res) => {
+    const auth = req.headers.authorization || '';
+    const tok = auth.startsWith('Bearer ') ? auth.slice(7).trim() : null;
+    const payload = tok ? verifySig(tok) : null;
+    const claim = payload ? readIngestPayload(payload) : null;
+    if (!claim) return json(res, 401, { error: 'bad token' });
+    const user = db.users.find(u => u.id === claim.uid) || null;
+    if (!user || user.disabled || (user.iv || 0) !== claim.iv) return json(res, 401, { error: 'bad token' });
+    const body = await readBody(req);
+    const cur = readStateStrict(user.id);
+    if (cur === UNREADABLE) { console.error('state file unreadable for', user.id); return json(res, 503, { error: 'state unreadable' }); }
+    if (!cur) return json(res, 409, { error: 'no profile yet' });   // create the profile in the app first
+    const today = new Date().toISOString().slice(0, 10);
+    const norm = normalizeWeighIn(body || {}, cur.unit || 'kg', today);
+    if (norm.error) return json(res, 400, { error: norm.error });
+    applyWeighIn(cur, { d: norm.d, w: norm.w });
+    // Same bookkeeping PUT /api/data does, so devices notice (GET /api/data/rev) and merge this in.
+    cur._rev = (cur._rev || 0) + 1;
+    cur._wids = [...(Array.isArray(cur._wids) ? cur._wids : []), ...(cur._wid ? [cur._wid] : [])]
+      .filter(x => typeof x === 'string').slice(-WID_KEEP);
+    cur._wid = crypto.randomBytes(8).toString('hex');
+    atomicWrite(stateFile(user.id), JSON.stringify(cur));
+    stateCache.delete(user.id);
+    json(res, 200, { ok: true, d: norm.d, w: norm.w, unit: cur.unit || 'kg' });
   },
 
   // Public config the login screen needs before anyone is signed in. `coach` is absent unless
