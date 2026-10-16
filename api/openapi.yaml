@@ -1578,6 +1578,91 @@ paths:
                   wid: { type: string, description: 'The write id (`_wid`) of the stored document; absent before its first write.' }
         '401': { $ref: '#/components/responses/Unauthorized' }
 
+  /api/account/ingest-token:
+    get:
+      tags: [data]
+      operationId: getIngestToken
+      summary: The caller's weigh-in ingest token
+      description: |
+        A stateless HMAC token (`ingest:<uid>:<iv>`) an automation such as an iOS Shortcut sends
+        as a Bearer to `POST /api/ingest/weight`, so a body-weight reading lands without a
+        browser session. The same token comes back on every call until it is rotated.
+      responses:
+        '200':
+          description: The token and the URL to post readings to.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  token: { type: string }
+                  url: { type: string }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+    post:
+      tags: [data]
+      operationId: rotateIngestToken
+      summary: Rotate the weigh-in ingest token
+      description: |
+        With `{ "rotate": true }` the profile's ingest version moves on, so every token handed
+        out before stops verifying. Without it, answers like the GET.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                rotate: { type: boolean }
+      responses:
+        '200':
+          description: The current (possibly new) token and the URL to post readings to.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  token: { type: string }
+                  url: { type: string }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /api/ingest/weight:
+    post:
+      tags: [data]
+      operationId: ingestWeight
+      summary: Post a body-weight reading with the ingest token
+      description: |
+        No session: the `Authorization: Bearer <ingest token>` header is the credential. The
+        reading is merged into the profile's weigh-ins as a stamped `{ d, w, t }` entry (one per
+        day, the newer write wins), and the document's revision moves so signed-in devices pull
+        it. `w` is in the profile's unit unless `unit` says otherwise; `d` defaults to today (UTC).
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [w]
+              properties:
+                w: { type: number, description: 'The weight, greater than 0.' }
+                d: { type: string, format: date, description: 'ISO date of the weigh-in.' }
+                unit: { type: string, enum: [kg, lb] }
+      responses:
+        '200':
+          description: Stored, in the profile's unit.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok: { type: boolean }
+                  d: { type: string, format: date }
+                  w: { type: number }
+                  unit: { type: string }
+        '400': { description: 'Weight out of range or a bad date.' }
+        '401': { description: 'Missing, invalid or rotated ingest token.' }
+        '409': { description: 'The profile has no state yet; open the app once first.' }
+        '503': { description: 'The profile state file cannot be read.' }
+
   /api/media/{hash}:
     parameters:
       - name: hash
