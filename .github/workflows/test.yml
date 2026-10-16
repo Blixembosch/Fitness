@@ -101,7 +101,11 @@ jobs:
       # install as test:api in .gitlab-ci.yml; the Agent SDK is optional and stays out).
       - run: npm ci --omit=optional
         working-directory: api
-      - run: npm test
+      - run: |
+          set +e
+          npm test > /tmp/api-test.txt 2>&1; rc=$?
+          grep -nE "^not ok|^# Subtest|error:|AssertionError|expected|actual|Error:" /tmp/api-test.txt | grep -B1 -A6 "not ok" | head -120 | sed 's/^/::error::DIAG /'
+          exit $rc
         working-directory: api
       # The api's copy of the exercise catalogue is generated and committed. A dataset change
       # that forgets to regenerate it would otherwise only surface as "the Coach can't find
