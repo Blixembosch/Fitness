@@ -95,15 +95,24 @@ def compute_targets():
 compute_targets()
 
 
-@st.cache_data(show_spinner=False, ttl=3600)
-def _coach_note(payload_key: str):
-    """Cached so Gemini is called at most once per unique metric set per hour."""
-    m = json.loads(payload_key)
+def _gemini_key():
     try:
-        key = st.secrets.get("GEMINI_API_KEY")
-    except Exception:  # noqa: BLE001 — no secrets file configured
-        key = None
-    return insight.coach_note(m, key)
+        return st.secrets.get("GEMINI_API_KEY")
+    except Exception:  # noqa: BLE001 — no secrets configured
+        return None
+
+
+@st.cache_data(show_spinner=False, ttl=1800)
+def _coach_note(payload_key: str, has_key: bool):
+    """Cached so Gemini is called at most once per unique metric set. `has_key` is part of the
+    cache key so adding/removing the API key refreshes the note."""
+    m = json.loads(payload_key)
+    model = None
+    try:
+        model = st.secrets.get("GEMINI_MODEL")  # optional pin; auto-detect if unset
+    except Exception:  # noqa: BLE001
+        model = None
+    return insight.coach_note(m, _gemini_key() if has_key else None, model)
 
 
 # ---------------- pages ----------------
@@ -387,7 +396,7 @@ def page_stats():
     payload = {"gkg": gkg, "protein_target": S["targets"]["protein"], "avg_protein": avg_prot,
                "loss_pct_week": loss, "avg_sets_per_muscle": avg_sets, "deficit_kcal": deficit,
                "avg_kcal": avg_kcal, "weight_kg": weight_kg}
-    note, used_ai = _coach_note(json.dumps(payload, sort_keys=True))
+    note, used_ai = _coach_note(json.dumps(payload, sort_keys=True), bool(_gemini_key()))
     st.markdown("<div class='eyebrow' style='margin-top:14px'>Akıllı özet" + ("  ·  Gemini" if used_ai else "") + "</div>", unsafe_allow_html=True)
     st.markdown(
         f"<div class='fcard' style='border-color:color-mix(in srgb,var(--blue) 26%,var(--line))'>"
