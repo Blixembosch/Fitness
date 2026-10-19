@@ -1,0 +1,90 @@
+"""Nutrition logic ported from the openGym fork: calorie/protein targets from body stats, a
+Cronometer daily-summary parser, and the per-day consumed/remaining math. On a GLP-1 (Wegovy)
+protein is the anchored number and calories never go below a floor."""
+from __future__ import annotations
+import io
+import pandas as pd
+
+ACTIVITY = {"sedentary": 1.2, "light": 1.4, "moderate": 1.55, "high": 1.725}
+
+
+def bmr(weight_kg: float, height_cm: float, age: int, sex: str = "male") -> int:
+    base = 10 * weight_kg + 6.25 * height_cm - 5 * age
+    return round(base + (-161 if sex == "female" else 5))
+
+
+def estimate_targets(weight_kg, height_cm, age, sex="male", activity="light",
+                     deficit=500, floor=1500, protein_per_kg=1.5, fat_pct=0.30) -> dict:
+    tdee = round(bmr(weight_kg, height_cm, age, sex) * ACTIVITY.get(activity, ACTIVITY["light"]))
+    kcal = max(floor, round((tdee - deficit) / 10) * 10)
+    protein = round(protein_per_kg * weight_kg)
+    fat = round(kcal * fat_pct / 9)
+    carbs = max(0, round((kcal - protein * 4 - fat * 9) / 4))
+    return {"tdee": tdee, "kcal": kcal, "protein": protein, "carbs": carbs, "fat": fat}
+
+
+def bmi(weight_kg: float, height_cm: float):
+    return round(weight_kg / (height_cm / 100) ** 2, 1) if height_cm else None
+
+
+# --- Cronometer dailysummary.csv -> tidy frame [date, kcal, protein, carbs, fat, fiber] ---
+_COLS = {
+    "kcal": ["energy (kcal)", "energy", "calories", "kcal"],
+    "protein": ["protein (g)", "protein"],
+    "carbs": ["carbs (g)", "net carbs (g)", "carbohydrates (g)", "carbs"],
+    "fat": ["fat (g)", "fat"],
+    "fiber": ["fiber (g)", "fibre (g)", "fiber"],
+}
+
+
+def _find(colmap: dict[str, str], names: list[str]):
+    for n in names:
+        if n in colmap:
+            return colmap[n]
+    return None
+
+
+def parse_cronometer(file) -> pd.DataFrame:
+    """Accepts a file-like or bytes of Cronometer's dailysummary.csv. Returns one row per day."""
+    raw = file.read() if hasattr(file, "read") else file
+    if isinstance(raw, bytes):
+        raw = raw.decode("utf-8-sig", errors="replace")
+    df = pd.read_csv(io.StringIO(raw))
+    colmap = {c.strip().lower(): c for c in df.columns}
+    date_col = _find(colmap, ["date", "day"])
+    if not date_col:
+        raise ValueError("Tarih sütunu bulunamadı (Date).")
+    out = pd.DataFrame()
+    out["date"] = pd.to_datetime(df[date_col], errors="coerce").dt.strftime("%Y-%m-%d")
+    for key, names in _COLS.items():
+        src = _find(colmap, names)
+        out[key] = pd.to_numeric(df[src], errors="coerce").round(1) if src else 0.0
+    out = out.dropna(subset=["date"])
+    # Collapse any duplicate day rows (Cronometer sometimes splits), summing nutrients.
+    out = out.groupby("date", as_index=False).sum(numeric_only=True)
+    return out.sort_values("date").reset_index(drop=True)
+
+
+def day_summary(entry: dict, targets: dict) -> dict:
+    out = {}
+    for k in ("kcal", "protein", "carbs", "fat"):
+        consumed = float(entry.get(k) or 0)
+        target = targets.get(k)
+        out[k] = {
+            "consumed": round(consumed, 1),
+            "target": target,
+            "remaining": round(target - consumed, 1) if target else None,
+            "pct": round(consumed / target * 100) if target else None,
+        }
+    return out
+
+
+def protein_adherence(days: pd.DataFrame, protein_target: float) -> dict:
+    if days is None or days.empty:
+        return {"days": 0, "met": 0, "avg_protein": 0, "avg_kcal": 0}
+    return {
+        "days": len(days),
+        "met": int((days["protein"] >= protein_target).sum()) if protein_target else 0,
+        "avg_protein": round(days["protein"].mean()),
+        "avg_kcal": round(days["kcal"].mean()),
+    }
