@@ -9,7 +9,7 @@ import pandas as pd
 import streamlit as st
 import plotly.graph_objects as go
 
-from lib import data, nutrition, bodymap, ui, program as P, metrics, insight
+from lib import data, nutrition, bodymap, ui, program as P, metrics, insight, sheets
 
 st.set_page_config(page_title="Fitness", page_icon="💪", layout="centered", initial_sidebar_state="collapsed")
 ui.inject()
@@ -38,8 +38,34 @@ WEEK_ISO = WEEK_START.strftime("%Y-%m-%d")
 
 
 # ---------------- helpers ----------------
+def _sheet_id():
+    try:
+        return st.secrets.get("SHEET_ID") or sheets.DEFAULT_SHEET_ID
+    except Exception:  # noqa: BLE001
+        return sheets.DEFAULT_SHEET_ID
+
+
+@st.cache_data(ttl=300, show_spinner=False)
+def _sheet(sheet_id: str):
+    """(weights[list], padel_dates[list], workout_count) from the Google Sheet. Cached 5 min."""
+    w = sheets.parse_weights(sheets.fetch_tab(sheet_id, "Weight"))
+    wo = sheets.parse_workouts(sheets.fetch_tab(sheet_id, "Workouts"))
+    return w, sheets.padel_dates(wo), int(len(wo))
+
+
+def _sheet_data():
+    try:
+        return _sheet(_sheet_id())
+    except Exception:  # noqa: BLE001
+        return [], [], 0
+
+
 def weights_df():
-    df = pd.DataFrame(S["weights"])
+    # Google-Sheet weigh-ins (Apple Health) merged with any manual entries; manual wins per day.
+    rows = {x["date"]: x["w"] for x in _sheet_data()[0]}
+    for x in S["weights"]:
+        rows[x["date"]] = x["w"]
+    df = pd.DataFrame([{"date": d, "w": w} for d, w in rows.items()])
     if df.empty:
         return df
     df["date"] = pd.to_datetime(df["date"])
@@ -65,7 +91,8 @@ def workouts_week():
 
 
 def padel_week():
-    return [d for d in S["padel"] if d >= WEEK_ISO]
+    allp = set(S["padel"]) | set(_sheet_data()[1])
+    return [d for d in allp if d >= WEEK_ISO]
 
 
 def navigate(page):
@@ -509,6 +536,12 @@ def page_nutrition():
         S["weights"] = [x for x in S["weights"] if x["date"] != iso] + [{"date": iso, "w": round(nw, 1)}]
         st.success("Kaydedildi (bu oturumda).")
         st.rerun()
+
+    sw, spd, swo = _sheet_data()
+    if sw or spd or swo:
+        st.caption(f"🔗 Google Sheet senkron: {len(sw)} kilo · {len(spd)} padel · {swo} antrenman kaydı")
+    else:
+        st.caption("🔗 Google Sheet henüz boş/bağlı değil. Apple Health otomasyonu kurulunca kilo ve spor buraya düşecek.")
 
     t = S["targets"]
     wkg = latest_weight()[0] or 100.0
