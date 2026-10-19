@@ -4,11 +4,12 @@
 Cronometer CSV + manual weight. Persistence (Google Sheets) + Apple Health sync come next."""
 from __future__ import annotations
 import datetime as dt
+import json
 import pandas as pd
 import streamlit as st
 import plotly.graph_objects as go
 
-from lib import data, nutrition, bodymap, ui, program as P, metrics
+from lib import data, nutrition, bodymap, ui, program as P, metrics, insight
 
 st.set_page_config(page_title="Fitness", page_icon="💪", layout="centered", initial_sidebar_state="collapsed")
 ui.inject()
@@ -84,6 +85,17 @@ def compute_targets():
 compute_targets()
 
 
+@st.cache_data(show_spinner=False, ttl=3600)
+def _coach_note(payload_key: str):
+    """Cached so Gemini is called at most once per unique metric set per hour."""
+    m = json.loads(payload_key)
+    try:
+        key = st.secrets.get("GEMINI_API_KEY")
+    except Exception:  # noqa: BLE001 — no secrets file configured
+        key = None
+    return insight.coach_note(m, key)
+
+
 # ---------------- pages ----------------
 def page_home():
     st.markdown(
@@ -105,11 +117,6 @@ def page_home():
     r3 = ui.ring(prot / t["protein"] if t["protein"] else 0, "var(--orange)", f"{prot}<small>/{t['protein']}</small>", "Protein", 44)
     r4 = ui.ring(kcal / t["kcal"] if t["kcal"] else 0, "var(--green)", f"{kcal}<small>/{t['kcal']}</small>", "Kalori", 44)
     st.markdown(f"<div class='rings'>{r1}{r2}{r3}{r4}</div>", unsafe_allow_html=True)
-    if st.button("🎾 Padel ekle", use_container_width=True):
-        iso = TODAY.strftime("%Y-%m-%d")
-        if iso not in S["padel"]:
-            S["padel"].append(iso)
-        st.rerun()
 
     # today hero from the program
     day = P.day_for(TODAY.weekday())
@@ -221,21 +228,17 @@ def page_plan():
         )
 
 
-def _exercise_card(e, color):
-    chips = "".join(f"<span class='chip' style='font-size:11px'>{data.tr_muscle(m)}</span>" for m in (e["primary"] + e["secondary"])[:5])
-    st.markdown(
-        f"<div class='fcard' style='margin-bottom:10px'>"
-        f"<div style='display:flex;justify-content:space-between;align-items:flex-start;gap:8px'>"
-        f"<div><div style='font-weight:700;font-size:15px'>{e['name']}</div>"
-        f"<div class='muted' style='font-size:12px;margin-top:2px'>{data.tr_eq(e.get('eq',''))}</div></div>"
-        f"<div style='text-align:right;flex-shrink:0'><div style='font-family:Nunito;font-weight:900;font-size:18px;color:{color}'>{e['sets']}×{e['reps']}</div>"
-        f"<div class='muted' style='font-size:11px'>set × tekrar</div></div></div>"
-        f"<div style='margin:10px 0 4px'>{bodymap.body_map(e['primary'], e['secondary'])}</div>"
-        + ui.legend(color)
-        + f"<div class='chiprow' style='margin-top:10px'>{chips}</div>"
-        f"<div class='muted' style='font-size:12.5px;margin-top:8px'>💡 {e.get('tip','')}</div></div>",
-        unsafe_allow_html=True,
-    )
+def _exercise_row(i, e, color):
+    """Compact row (number · name · sets×reps); tap to reveal the muscle map + details."""
+    with st.expander(f"{i}.  {e['name']}   ·   {e['sets']}×{e['reps']}"):
+        st.markdown(f"<div class='muted' style='font-size:12.5px;margin:-4px 0 8px'>{data.tr_eq(e.get('eq',''))}</div>", unsafe_allow_html=True)
+        chips = "".join(f"<span class='chip' style='font-size:11px'>{data.tr_muscle(m)}</span>" for m in (e["primary"] + e["secondary"])[:5])
+        st.markdown(
+            bodymap.body_map(e["primary"], e["secondary"]) + ui.legend(color)
+            + f"<div class='chiprow' style='margin-top:10px'>{chips}</div>"
+            f"<div class='muted' style='font-size:12.5px;margin-top:8px'>💡 {e.get('tip','')}</div>",
+            unsafe_allow_html=True,
+        )
 
 
 def page_workout():
@@ -254,8 +257,9 @@ def page_workout():
         f"<div class='muted' style='font-size:13px;margin:2px 0 12px'>{day['note']} · {load['exercises']} egzersiz · {load['sets']} set · ~{load['minutes']} dk</div>",
         unsafe_allow_html=True,
     )
-    for e in P.day_details(day):
-        _exercise_card(e, color)
+    st.caption("Bir harekete dokun → hangi kası çalıştırdığını kas haritasında gör.")
+    for i, e in enumerate(P.day_details(day), 1):
+        _exercise_row(i, e, color)
 
     done_iso = TODAY.strftime("%Y-%m-%d")
     already = any(w["date"] == done_iso and w.get("key") == day["key"] for w in S["workouts"])
@@ -337,10 +341,20 @@ def page_stats():
     rows.append(ui.metric_row("Kalori açığı", f"{deficit if deficit is not None else '–'} kcal",
                               f"{metrics.DEFICIT_KCAL[0]}–{metrics.DEFICIT_KCAL[1]}", cls, word,
                               "Orta düzey açık yağı eritir, kası korur (~0,5–1%/hafta)."))
-    st.markdown("<div class='eyebrow' style='margin-top:16px'>Kanıta dayalı hedefler</div>", unsafe_allow_html=True)
+    # smart coach note (Gemini if a key is set, else rule-based) — the headline of Stats
+    payload = {"gkg": gkg, "protein_target": S["targets"]["protein"], "avg_protein": avg_prot,
+               "loss_pct_week": loss, "avg_sets_per_muscle": avg_sets, "deficit_kcal": deficit,
+               "avg_kcal": avg_kcal, "weight_kg": weight_kg}
+    note, used_ai = _coach_note(json.dumps(payload, sort_keys=True))
+    st.markdown("<div class='eyebrow' style='margin-top:14px'>Akıllı özet" + ("  ·  Gemini" if used_ai else "") + "</div>", unsafe_allow_html=True)
+    st.markdown(
+        f"<div class='fcard' style='border-color:color-mix(in srgb,var(--blue) 26%,var(--line))'>"
+        f"<div style='font-size:14px;line-height:1.6'>💬 {note}</div></div>",
+        unsafe_allow_html=True,
+    )
+
+    st.markdown("<div class='eyebrow' style='margin-top:14px'>Kanıta dayalı hedefler</div>", unsafe_allow_html=True)
     st.markdown(f"<div class='fcard' style='padding:4px 16px 14px'>{''.join(rows)}</div>", unsafe_allow_html=True)
-    if gkg and gkg < metrics.PROTEIN_GKG[0]:
-        st.warning(f"Proteinin ~{gkg} g/kg — hedef bandın altında. Günlük ~{int(metrics.PROTEIN_GKG[0]*(weight_kg or 100))}–{int(2*(weight_kg or 100))} g'a çıkmak kasını korur.")
 
     st.markdown("<div class='eyebrow' style='margin-top:16px'>Kilo trendi</div>", unsafe_allow_html=True)
     if not wdf.empty:
@@ -355,36 +369,34 @@ def page_stats():
         st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
         st.caption("Çizgi: 7 günlük hareketli ortalama (günlük dalgalanmayı yumuşatır).")
 
-    # weekly planned volume by muscle group (from the program) — always informative
-    st.markdown("<div class='eyebrow' style='margin-top:6px'>Haftalık planlanan hacim</div>", unsafe_allow_html=True)
-    vol: dict[str, int] = {}
-    for d in P.TRAINING_DAYS:
-        for e in P.day_details(d):
-            if e["primary"]:
-                g = data.group_of(e["primary"][0])
-                if g:
-                    vol[g] = vol.get(g, 0) + int(e["sets"])
-    if vol:
-        mx = max(vol.values())
-        order = ["Göğüs", "Sırt", "Omuz", "Kol", "Bacak", "Baldır", "Karın"]
-        bars = "".join(ui.bar(g, f"{vol[g]} set", vol[g] / mx * 100, "var(--blue)") for g in order if g in vol)
-        st.markdown(f"<div class='fcard'><div class='bars'>{bars}</div></div>", unsafe_allow_html=True)
-
-    # muscle map of what the week's program (or logged) trains
-    st.markdown("<div class='eyebrow'>Kas haritası · bu hafta</div>", unsafe_allow_html=True)
-    if wk:
-        prim = [m for w in wk for m in w.get("primary", [])]
-        sec = [m for w in wk for m in w.get("secondary", [])]
-        cap = "Kayıtlı antrenmanlara göre"
-    else:
-        prim, sec = [], []
+    with st.expander("Haftalık hacim (kas grubu)"):
+        vol: dict[str, int] = {}
         for d in P.TRAINING_DAYS:
-            p, s = P.day_muscles(d)
-            prim += p
-            sec += s
-        cap = "Programa göre (henüz kayıt yok)"
-    st.markdown(bodymap.body_map(prim, sec) + ui.legend("var(--blue)"), unsafe_allow_html=True)
-    st.caption(cap)
+            for e in P.day_details(d):
+                if e["primary"]:
+                    g = data.group_of(e["primary"][0])
+                    if g:
+                        vol[g] = vol.get(g, 0) + int(e["sets"])
+        if vol:
+            mx = max(vol.values())
+            order = ["Göğüs", "Sırt", "Omuz", "Kol", "Bacak", "Baldır", "Karın"]
+            bars = "".join(ui.bar(g, f"{vol[g]} set", vol[g] / mx * 100, "var(--blue)") for g in order if g in vol)
+            st.markdown(f"<div class='bars'>{bars}</div>", unsafe_allow_html=True)
+
+    with st.expander("Kas haritası · bu hafta"):
+        if wk:
+            prim = [m for w in wk for m in w.get("primary", [])]
+            sec = [m for w in wk for m in w.get("secondary", [])]
+            cap = "Kayıtlı antrenmanlara göre"
+        else:
+            prim, sec = [], []
+            for d in P.TRAINING_DAYS:
+                p, s = P.day_muscles(d)
+                prim += p
+                sec += s
+            cap = "Programa göre (henüz kayıt yok)"
+        st.markdown(bodymap.body_map(prim, sec) + ui.legend("var(--blue)"), unsafe_allow_html=True)
+        st.caption(cap)
 
     with st.expander("ℹ️ Hedefler neye dayanıyor?"):
         st.markdown(
@@ -467,18 +479,18 @@ def page_nutrition():
         st.caption("Protein 1,8 g/kg'de sabit (kas koruma); kilo değiştikçe hedefler otomatik güncellenir. Genel bilgilendirme, tıbbi tavsiye değil.")
 
 
-# ---------------- nav + routing ----------------
-PAGES = {"home": page_home, "plan": page_plan, "workout": page_workout, "stats": page_stats, "nutrition": page_nutrition}
-PAGES[S["page"]]()
-
-st.markdown("<div style='height:6px'></div>", unsafe_allow_html=True)
+# ---------------- nav (top) + routing ----------------
 NAV = [("plan", "🗓"), ("workout", "🏋️"), ("home", "🏠"), ("stats", "📊"), ("nutrition", "🔥")]
 LABEL = {"plan": "Plan", "workout": "Antrenman", "home": "Ana Sayfa", "stats": "İstatistik", "nutrition": "Beslenme"}
+PAGES = {"home": page_home, "plan": page_plan, "workout": page_workout, "stats": page_stats, "nutrition": page_nutrition}
+
 cols = st.columns([1, 1, 1.25, 1, 1])
 for col, (key, icon) in zip(cols, NAV):
     with col:
         st.button(icon, key=f"nav_{key}", use_container_width=True,
                   type="primary" if S["page"] == key else "secondary",
                   on_click=navigate, args=(key,))
-st.markdown(f"<div style='text-align:center;color:var(--faint);font-size:11px;margin-top:2px'>{LABEL[S['page']]}</div>", unsafe_allow_html=True)
+st.markdown(f"<div style='text-align:center;color:var(--faint);font-size:11px;margin:1px 0 10px'>{LABEL[S['page']]}</div>", unsafe_allow_html=True)
+
+PAGES[S["page"]]()
 st.caption("Tasarım önizlemesi · program sana özel · veriler şimdilik oturum içinde")
