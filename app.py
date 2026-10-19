@@ -8,7 +8,7 @@ import pandas as pd
 import streamlit as st
 import plotly.graph_objects as go
 
-from lib import data, nutrition, bodymap, ui, program as P
+from lib import data, nutrition, bodymap, ui, program as P, metrics
 
 st.set_page_config(page_title="Fitness", page_icon="💪", layout="centered", initial_sidebar_state="collapsed")
 ui.inject()
@@ -281,19 +281,63 @@ def page_stats():
     start = (TODAY - dt.timedelta(days=days - 1)).strftime("%Y-%m-%d")
     wk = [w for w in S["workouts"] if w["date"] >= start]
     ndf = S["nutrition"]
-    nwin = ndf[ndf["date"] >= start] if ndf is not None and not ndf.empty else pd.DataFrame()
-    ad = nutrition.protein_adherence(nwin, S["targets"]["protein"]) if not nwin.empty else {"days": 0, "met": 0, "avg_protein": 0, "avg_kcal": 0}
+    # Nutrition habit is read from the last up-to-30 LOGGED days (imports are historical, so a
+    # calendar window can be empty); weight/workouts follow the chosen period.
+    recent = ndf.tail(30) if ndf is not None and not ndf.empty else pd.DataFrame()
+    avg_prot = round(recent["protein"].mean()) if not recent.empty else 0
+    avg_kcal = round(recent["kcal"].mean()) if not recent.empty else 0
+    met = int((recent["protein"] >= S["targets"]["protein"]).sum()) if not recent.empty else 0
     wdf = weights_df()
     wwin = wdf[wdf["date"] >= pd.Timestamp(start)] if not wdf.empty else wdf
     wdelta = (wwin["w"].iloc[-1] - wwin["w"].iloc[0]) if len(wwin) > 1 else 0
-    deficit = (ad["avg_kcal"] - S["targets"]["kcal"]) if ad["days"] else None
+    weight_kg = latest_weight()[0]
+    deficit = (S["targets"]["kcal"] - avg_kcal) if avg_kcal else None  # positive = under target
     tiles = "".join([
         ui.tile("Antrenman", str(len(wk)), f"{days} günde"),
-        ui.tile("Protein ort.", f"{ad['avg_protein']}<small> g</small>", f"{ad['met']}/{ad['days']} gün hedefte" if ad["days"] else "veri yok", "good" if ad["met"] else ""),
-        ui.tile("Kalori açığı", (f"{deficit:+d}" if deficit is not None else "–"), "günlük ort.", "good" if (deficit or 0) <= 0 else "bad"),
+        ui.tile("Protein ort.", f"{avg_prot}<small> g</small>", f"{met}/{len(recent)} gün hedefte" if not recent.empty else "veri yok", "good" if met else ""),
+        ui.tile("Kalori ort.", (f"{avg_kcal}" if avg_kcal else "–"), "son kayıtlar", ""),
         ui.tile("Kilo", f"{wdelta:+.1f}", "kg", "good" if wdelta < 0 else "bad" if wdelta > 0 else ""),
     ])
     st.markdown(f"<div class='tiles'>{tiles}</div>", unsafe_allow_html=True)
+
+    # ---- evidence-based targets ----
+    gkg = metrics.protein_per_kg(avg_prot, weight_kg)
+    loss = metrics.weekly_loss_pct(wwin if len(wwin) > 1 else wdf)
+    # avg weekly sets across trained muscle groups, from the program
+    vol = {}
+    for d in P.TRAINING_DAYS:
+        for e in P.day_details(d):
+            if e["primary"]:
+                g = data.group_of(e["primary"][0])
+                if g and g != "Kardiyo":
+                    vol[g] = vol.get(g, 0) + int(e["sets"])
+    avg_sets = round(sum(vol.values()) / len(vol)) if vol else 0
+
+    rows = []
+    s = metrics.band(gkg, *metrics.PROTEIN_GKG)
+    cls, word = metrics.verdict(s, "düşük", "yüksek")
+    rows.append(ui.metric_row("Protein (g/kg)", f"{gkg if gkg else '–'} g/kg",
+                              f"{metrics.PROTEIN_GKG[0]}–{metrics.PROTEIN_GKG[1]}", cls, word,
+                              "Wegovy'de kası korumanın #1 kaldıracı; açıkta en kritik sayı."))
+    s = metrics.band(loss, *metrics.LOSS_PCT_WK)
+    cls, word = metrics.verdict(s, "yavaş", "hızlı (kas riski)")
+    rows.append(ui.metric_row("Kilo kaybı hızı", f"{loss if loss is not None else '–'} %/hafta",
+                              f"%{metrics.LOSS_PCT_WK[0]}–{metrics.LOSS_PCT_WK[1]}", cls, word,
+                              "Çok hızlı kayıp kasını da götürür; yavaş ve istikrarlı daha iyi."))
+    s = metrics.band(avg_sets, *metrics.SETS_PER_MUSCLE)
+    cls, word = metrics.verdict(s, "düşük", "yüksek")
+    rows.append(ui.metric_row("Haftalık set / kas", f"~{avg_sets} set",
+                              f"{metrics.SETS_PER_MUSCLE[0]}–{metrics.SETS_PER_MUSCLE[1]}", cls, word,
+                              "Kas başına haftalık efektif set — büyüme/koruma için."))
+    s = metrics.band(deficit, *metrics.DEFICIT_KCAL)
+    cls, word = metrics.verdict(s, "küçük", "büyük (kas riski)")
+    rows.append(ui.metric_row("Kalori açığı", f"{deficit if deficit is not None else '–'} kcal",
+                              f"{metrics.DEFICIT_KCAL[0]}–{metrics.DEFICIT_KCAL[1]}", cls, word,
+                              "Orta düzey açık yağı eritir, kası korur (~0,5–1%/hafta)."))
+    st.markdown("<div class='eyebrow' style='margin-top:16px'>Kanıta dayalı hedefler</div>", unsafe_allow_html=True)
+    st.markdown(f"<div class='fcard' style='padding:4px 16px 14px'>{''.join(rows)}</div>", unsafe_allow_html=True)
+    if gkg and gkg < metrics.PROTEIN_GKG[0]:
+        st.warning(f"Proteinin ~{gkg} g/kg — hedef bandın altında. Günlük ~{int(metrics.PROTEIN_GKG[0]*(weight_kg or 100))}–{int(2*(weight_kg or 100))} g'a çıkmak kasını korur.")
 
     st.markdown("<div class='eyebrow' style='margin-top:16px'>Kilo trendi</div>", unsafe_allow_html=True)
     if not wdf.empty:
@@ -333,6 +377,15 @@ def page_stats():
         cap = "Programa göre (henüz kayıt yok)"
     st.markdown(bodymap.body_map(prim, sec) + ui.legend("var(--blue)"), unsafe_allow_html=True)
     st.caption(cap)
+
+    with st.expander("ℹ️ Hedefler neye dayanıyor?"):
+        st.markdown(
+            "- **Protein 1,6–2,2 g/kg:** açıkta kas kaybını azaltır (Helms ve ark.; Examine özetleri).\n"
+            "- **Kayıp %0,5–1/hafta:** daha hızlısı yağla birlikte kası da götürür.\n"
+            "- **Kas başına 10–20 set/hafta:** hipertrofi için genel aralık (yeni başlayanlar alt uçta).\n"
+            "- **GLP-1'de (Wegovy):** kaybın büyük kısmı yağ olsa da yağsız kütle riski var; **protein + ağırlık antrenmanı** bunu azaltır.\n\n"
+            "_Genel bilgilendirme; tıbbi tavsiye değildir._"
+        )
 
 
 def page_nutrition():

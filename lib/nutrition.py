@@ -45,7 +45,12 @@ def _find(colmap: dict[str, str], names: list[str]):
 
 
 def parse_cronometer(file) -> pd.DataFrame:
-    """Accepts a file-like or bytes of Cronometer's dailysummary.csv. Returns one row per day."""
+    """Accepts a file-like or bytes of Cronometer's dailysummary.csv. Returns one row per day.
+
+    Cronometer exports rows per meal (Group = Breakfast/Lunch/…) plus a daily `Total` row. We keep
+    ONLY the Total rows so nutrients aren't double-counted; if there's no Group column (older export
+    format with one row per day) we take every row. Empty days (no entries) are dropped.
+    """
     raw = file.read() if hasattr(file, "read") else file
     if isinstance(raw, bytes):
         raw = raw.decode("utf-8-sig", errors="replace")
@@ -54,15 +59,19 @@ def parse_cronometer(file) -> pd.DataFrame:
     date_col = _find(colmap, ["date", "day"])
     if not date_col:
         raise ValueError("Tarih sütunu bulunamadı (Date).")
+    group_col = _find(colmap, ["group", "category"])
+    if group_col:
+        df = df[df[group_col].astype(str).str.strip().str.lower() == "total"]
     out = pd.DataFrame()
     out["date"] = pd.to_datetime(df[date_col], errors="coerce").dt.strftime("%Y-%m-%d")
     for key, names in _COLS.items():
         src = _find(colmap, names)
-        out[key] = pd.to_numeric(df[src], errors="coerce").round(1) if src else 0.0
+        out[key] = pd.to_numeric(df[src], errors="coerce") if src else 0.0
     out = out.dropna(subset=["date"])
-    # Collapse any duplicate day rows (Cronometer sometimes splits), summing nutrients.
-    out = out.groupby("date", as_index=False).sum(numeric_only=True)
-    return out.sort_values("date").reset_index(drop=True)
+    # one row per day; drop days with no real intake logged
+    out = out.groupby("date", as_index=False).sum(numeric_only=True).round(1)
+    out = out[out["kcal"] > 0].sort_values("date").reset_index(drop=True)
+    return out
 
 
 def day_summary(entry: dict, targets: dict) -> dict:

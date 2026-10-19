@@ -90,6 +90,21 @@ def bar(label: str, value: str, pct: float, color: str, primary: bool = False) -
     )
 
 
+def metric_row(label: str, value: str, target: str, cls: str, verdict: str, note: str) -> str:
+    dot = {"good": "var(--green)", "bad": "var(--red)", "": "var(--faint)"}.get(cls, "var(--faint)")
+    return (
+        f'<div style="padding:12px 0;border-top:1px solid var(--line)">'
+        f'<div style="display:flex;justify-content:space-between;align-items:baseline;gap:10px">'
+        f'<span style="font-weight:700;font-size:14px">{label}</span>'
+        f'<span style="font-family:Nunito;font-weight:800;font-size:16px">{value}</span></div>'
+        f'<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-top:3px">'
+        f'<span class="muted" style="font-size:12px">{note}</span>'
+        f'<span style="font-size:11.5px;font-weight:700;color:{dot};white-space:nowrap">'
+        f'<span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:{dot};margin-inline-end:5px"></span>'
+        f'{verdict} · hedef {target}</span></div></div>'
+    )
+
+
 def legend(color: str) -> str:
     return (
         '<div class="legend"><span>Az</span>'
