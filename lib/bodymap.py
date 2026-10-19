@@ -5,16 +5,17 @@ from __future__ import annotations
 
 # dataset muscle name -> body-map zone(s)
 MUSCLE_ZONES = {
-    "chest": ["chest"],
+    "chest": ["chest"], "pectorals": ["chest"], "upper chest": ["chest"], "serratus anterior": ["chest"],
     "shoulders": ["shoulderL", "shoulderR"], "delts": ["shoulderL", "shoulderR"],
-    "biceps": ["bicepL", "bicepR"],
+    "rear deltoids": ["shoulderL", "shoulderR"], "rotator cuff": ["shoulderL", "shoulderR"],
+    "biceps": ["bicepL", "bicepR"], "brachialis": ["bicepL", "bicepR"],
     "triceps": ["tricepL", "tricepR"],
     "forearms": ["faL", "faR"],
-    "abs": ["absU", "absL"], "core": ["absU", "absL"], "serratus anterior": ["absU"],
-    "obliques": ["absL"],
+    "abs": ["absU", "absL"], "core": ["absU", "absL"], "lower abs": ["absL"], "obliques": ["absL"],
     "quads": ["quadL", "quadR"], "quadriceps": ["quadL", "quadR"], "adductors": ["quadL", "quadR"],
     "calves": ["calfL", "calfR"], "soleus": ["calfL", "calfR"],
-    "lats": ["lats"], "upper back": ["lats", "traps"], "traps": ["traps"],
+    "lats": ["lats"], "upper back": ["lats", "traps"], "rhomboids": ["lats", "traps"],
+    "traps": ["traps"], "trapezius": ["traps"],
     "lower back": ["lower"], "spine": ["lower"],
     "glutes": ["gluteL", "gluteR"], "abductors": ["gluteL", "gluteR"],
     "hamstrings": ["hamL", "hamR"],

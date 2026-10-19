@@ -16,14 +16,34 @@ BP_TR = {
 }
 MUSCLE_TR = {
     "abs": "Karın", "biceps": "Biceps", "calves": "Baldır", "cardiovascular system": "Kardiyo",
-    "chest": "Göğüs", "core": "Core", "delts": "Omuz", "shoulders": "Omuz", "forearms": "Ön kol",
+    "chest": "Göğüs", "pectorals": "Göğüs", "upper chest": "Üst göğüs", "core": "Core",
+    "delts": "Omuz", "shoulders": "Omuz", "rear deltoids": "Arka omuz", "rotator cuff": "Rotator",
+    "forearms": "Ön kol", "brachialis": "Brachialis",
     "glutes": "Kalça", "hamstrings": "Arka bacak", "hip flexors": "Kalça fleksörü",
-    "lats": "Kanat (lat)", "lower back": "Bel", "upper back": "Üst sırt", "traps": "Trapez",
+    "lats": "Kanat (lat)", "lower back": "Bel", "upper back": "Üst sırt", "rhomboids": "Rhomboid",
+    "traps": "Trapez", "trapezius": "Trapez",
     "triceps": "Triceps", "quads": "Ön bacak", "quadriceps": "Ön bacak", "adductors": "İç bacak",
     "abductors": "Dış bacak", "spine": "Omurga", "serratus anterior": "Serratus",
     "levator scapulae": "Boyun", "ankles": "Ayak bileği", "feet": "Ayak", "neck": "Boyun",
-    "sartorius": "Sartorius", "soleus": "Soleus",
+    "sartorius": "Sartorius", "soleus": "Soleus", "lower abs": "Alt karın", "obliques": "Yan karın",
 }
+
+# muscle -> coarse training group (for day chips / weekly volume)
+_GROUP = {
+    "Göğüs": {"chest", "pectorals", "upper chest", "serratus anterior"},
+    "Sırt": {"lats", "upper back", "trapezius", "traps", "rhomboids", "lower back", "spine"},
+    "Omuz": {"shoulders", "delts", "rear deltoids", "rotator cuff"},
+    "Kol": {"biceps", "triceps", "forearms", "brachialis"},
+    "Bacak": {"quads", "quadriceps", "glutes", "hamstrings", "adductors", "abductors", "hip flexors", "sartorius"},
+    "Baldır": {"calves", "soleus"},
+    "Karın": {"abs", "core", "lower abs", "obliques"},
+    "Kardiyo": {"cardiovascular system"},
+}
+_GROUP_OF = {m: g for g, ms in _GROUP.items() for m in ms}
+
+
+def group_of(muscle: str) -> str | None:
+    return _GROUP_OF.get(muscle)
 EQ_TR = {
     "body weight": "Vücut ağırlığı", "dumbbell": "Dambıl", "barbell": "Halter", "cable": "Kablo",
     "machine": "Makine", "kettlebell": "Kettlebell", "band": "Direnç bandı", "smith machine": "Smith",
