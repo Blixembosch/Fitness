@@ -16,7 +16,10 @@ ui.inject()
 # ---------------- state ----------------
 S = st.session_state
 S.setdefault("page", "home")
-S.setdefault("targets", {"kcal": 1810, "protein": 152, "carbs": 166, "fat": 60})
+# Body stats drive the targets. Age is an editable assumption (not in the data); everything else
+# we know. Protein is fixed at a muscle-preservation 1.8 g/kg; calories = TDEE − deficit.
+S.setdefault("body", {"age": 35, "height": 178, "sex": "male", "activity": "light", "deficit": 500})
+PROTEIN_PER_KG = 1.8
 S.setdefault("weights", [{"date": "2026-10-12", "w": 101.1}, {"date": "2026-10-16", "w": 101.1}, {"date": "2026-10-19", "w": 100.5}])
 S.setdefault("workouts", [])          # [{date, key, name, muscles:(primary,secondary)}]
 S.setdefault("padel", [])             # [iso date]
@@ -65,6 +68,20 @@ def padel_week():
 
 def navigate(page):
     S["page"] = page
+
+
+def compute_targets():
+    """Targets derived from the latest bodyweight + body stats, so they track as weight changes.
+    Protein at 1.8 g/kg (muscle preservation in a deficit); calories = TDEE − deficit, floor 1500."""
+    w = latest_weight()[0] or 100.0
+    b = S["body"]
+    t = nutrition.estimate_targets(w, b["height"], b["age"], b["sex"], b["activity"], b["deficit"],
+                                   floor=1500, protein_per_kg=PROTEIN_PER_KG)
+    S["targets"] = {k: t[k] for k in ("kcal", "protein", "carbs", "fat")}
+    S["tdee"] = t["tdee"]
+
+
+compute_targets()
 
 
 # ---------------- pages ----------------
@@ -291,7 +308,7 @@ def page_stats():
     wwin = wdf[wdf["date"] >= pd.Timestamp(start)] if not wdf.empty else wdf
     wdelta = (wwin["w"].iloc[-1] - wwin["w"].iloc[0]) if len(wwin) > 1 else 0
     weight_kg = latest_weight()[0]
-    deficit = (S["targets"]["kcal"] - avg_kcal) if avg_kcal else None  # positive = under target
+    deficit = (S["tdee"] - avg_kcal) if avg_kcal else None  # positive = daily deficit vs maintenance
     tiles = "".join([
         ui.tile("Antrenman", str(len(wk)), f"{days} günde"),
         ui.tile("Protein ort.", f"{avg_prot}<small> g</small>", f"{met}/{len(recent)} gün hedefte" if not recent.empty else "veri yok", "good" if met else ""),
@@ -341,11 +358,16 @@ def page_stats():
 
     st.markdown("<div class='eyebrow' style='margin-top:16px'>Kilo trendi</div>", unsafe_allow_html=True)
     if not wdf.empty:
-        fig = go.Figure(go.Scatter(x=wdf["date"], y=wdf["w"], mode="lines+markers", line=dict(color="#30d158", width=3), marker=dict(size=6)))
-        fig.update_layout(height=200, margin=dict(l=0, r=0, t=6, b=0), paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)", font=dict(color="#9aa1ae"))
+        fig = go.Figure()
+        fig.add_trace(go.Scatter(x=wdf["date"], y=wdf["w"], mode="markers", marker=dict(size=6, color="#30d158"), name="Tartım"))
+        if len(wdf) >= 3:
+            ma = wdf["w"].rolling(7, min_periods=1).mean()
+            fig.add_trace(go.Scatter(x=wdf["date"], y=ma, mode="lines", line=dict(color="#30d158", width=3), name="7-gün ort."))
+        fig.update_layout(height=210, margin=dict(l=0, r=0, t=6, b=0), paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)", font=dict(color="#9aa1ae"), showlegend=False)
         fig.update_xaxes(showgrid=False)
         fig.update_yaxes(gridcolor="rgba(255,255,255,.06)", ticksuffix=" kg")
         st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
+        st.caption("Çizgi: 7 günlük hareketli ortalama (günlük dalgalanmayı yumuşatır).")
 
     # weekly planned volume by muscle group (from the program) — always informative
     st.markdown("<div class='eyebrow' style='margin-top:6px'>Haftalık planlanan hacim</div>", unsafe_allow_html=True)
@@ -438,6 +460,25 @@ def page_nutrition():
         S["weights"] = [x for x in S["weights"] if x["date"] != iso] + [{"date": iso, "w": round(nw, 1)}]
         st.success("Kaydedildi (bu oturumda).")
         st.rerun()
+
+    t = S["targets"]
+    wkg = latest_weight()[0] or 100.0
+    st.markdown(
+        f"<div class='fcard' style='margin-top:8px'><div class='eyebrow'>Senin için hesaplanan hedef</div>"
+        f"<div style='font-size:13.5px;line-height:1.7'><b>{t['protein']} g protein</b> (~{PROTEIN_PER_KG} g/kg · kas koruma)"
+        f"&nbsp;·&nbsp;<b>{t['kcal']} kcal</b> (TDEE ~{S['tdee']} − {S['body']['deficit']} açık)"
+        f"&nbsp;·&nbsp;{t['carbs']} g karb · {t['fat']} g yağ</div></div>",
+        unsafe_allow_html=True,
+    )
+    with st.expander("⚙️ Hedef ayarları (yaş, boy, aktivite, açık)"):
+        b = S["body"]
+        b["age"] = st.number_input("Yaş", 16, 90, int(b["age"]))
+        b["height"] = st.number_input("Boy (cm)", 120, 220, int(b["height"]))
+        acts = ["light", "moderate", "high"]
+        b["activity"] = st.selectbox("Aktivite düzeyi", acts, index=acts.index(b["activity"]),
+                                     format_func=lambda x: {"light": "Az hareketli (masa başı)", "moderate": "Orta", "high": "Yüksek"}[x])
+        b["deficit"] = st.number_input("Günlük kalori açığı", 0, 1000, int(b["deficit"]), step=50)
+        st.caption("Protein 1,8 g/kg'de sabit (kas koruma); kilo değiştikçe hedefler otomatik güncellenir. Genel bilgilendirme, tıbbi tavsiye değil.")
 
 
 # ---------------- nav + routing ----------------

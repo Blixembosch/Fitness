@@ -14,11 +14,11 @@ DAYS = [
     {"wd": 0, "key": "upperA", "name": "Üst A", "focus": "upper", "tag": "Üst · A", "note": "Göğüs, sırt, omuz, kol",
      "exercises": [
          {"id": "0289", "sets": 3, "reps": "8–12", "tip": "Göğüs; kontrollü indir, patlayarak it."},
-         {"id": "0293", "sets": 3, "reps": "10–12", "tip": "Sırt; dirseği gövdeye yakın çek, sık."},
          {"id": "0314", "sets": 3, "reps": "10–12", "tip": "Üst göğüs; bench ~30°."},
+         {"id": "0293", "sets": 3, "reps": "10–12", "tip": "Sırt; dirseği gövdeye yakın çek, sık."},
+         {"id": "9698", "sets": 3, "reps": "10–12", "tip": "Sırt (göğüs destekli); belini korur, lat'ı sık."},
          {"id": "0334", "sets": 3, "reps": "12–15", "tip": "Omuz yanı; hafif ağırlık, salınımsız."},
          {"id": "0294", "sets": 3, "reps": "10–12", "tip": "Biceps; dirsek sabit."},
-         {"id": "0430", "sets": 3, "reps": "12–15", "tip": "Triceps; dirsek içe kaçmasın."},
          {"id": "3449", "sets": 3, "reps": "20", "tip": "Bel/yan karın; gövdeyi döndür, kontrollü."},
      ]},
     {"wd": 1, "key": "padelTue", "name": "Padel", "focus": "cardio", "tag": "Padel",
