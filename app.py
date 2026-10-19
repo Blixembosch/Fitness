@@ -19,7 +19,7 @@ S = st.session_state
 S.setdefault("page", "home")
 # Body stats drive the targets. Age is an editable assumption (not in the data); everything else
 # we know. Protein is fixed at a muscle-preservation 1.8 g/kg; calories = TDEE − deficit.
-S.setdefault("body", {"age": 35, "height": 178, "sex": "male", "activity": "light", "deficit": 500})
+S.setdefault("body", {"birth": "1992-03-12", "height": 178, "sex": "male", "activity": "light", "deficit": 500})
 PROTEIN_PER_KG = 1.8
 S.setdefault("weights", [{"date": "2026-10-12", "w": 101.1}, {"date": "2026-10-16", "w": 101.1}, {"date": "2026-10-19", "w": 100.5}])
 S.setdefault("workouts", [])          # [{date, key, name, muscles:(primary,secondary)}]
@@ -71,12 +71,21 @@ def navigate(page):
     S["page"] = page
 
 
+def age_from(birth: str) -> int:
+    try:
+        b = dt.date.fromisoformat(birth)
+        return max(16, (TODAY - b).days // 365)
+    except Exception:  # noqa: BLE001
+        return 35
+
+
 def compute_targets():
     """Targets derived from the latest bodyweight + body stats, so they track as weight changes.
     Protein at 1.8 g/kg (muscle preservation in a deficit); calories = TDEE − deficit, floor 1500."""
     w = latest_weight()[0] or 100.0
     b = S["body"]
-    t = nutrition.estimate_targets(w, b["height"], b["age"], b["sex"], b["activity"], b["deficit"],
+    age = age_from(b["birth"]) if b.get("birth") else b.get("age", 35)
+    t = nutrition.estimate_targets(w, b["height"], age, b["sex"], b["activity"], b["deficit"],
                                    floor=1500, protein_per_kg=PROTEIN_PER_KG)
     S["targets"] = {k: t[k] for k in ("kcal", "protein", "carbs", "fat")}
     S["tdee"] = t["tdee"]
@@ -470,7 +479,10 @@ def page_nutrition():
     )
     with st.expander("⚙️ Hedef ayarları (yaş, boy, aktivite, açık)"):
         b = S["body"]
-        b["age"] = st.number_input("Yaş", 16, 90, int(b["age"]))
+        bd = st.date_input("Doğum tarihi", value=dt.date.fromisoformat(b.get("birth", "1992-03-12")),
+                           min_value=dt.date(1940, 1, 1), max_value=TODAY, format="DD.MM.YYYY")
+        b["birth"] = bd.isoformat()
+        st.caption(f"Yaş: {age_from(b['birth'])}")
         b["height"] = st.number_input("Boy (cm)", 120, 220, int(b["height"]))
         acts = ["light", "moderate", "high"]
         b["activity"] = st.selectbox("Aktivite düzeyi", acts, index=acts.index(b["activity"]),
