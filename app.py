@@ -168,72 +168,73 @@ def page_home():
         )
 
 
-def _week_strip():
+def _plan_exercise_box(i, e, color):
+    """Plan overview box: round number badge + move + muscle chips + sets×reps."""
+    chips = "".join(f"<span class='chip' style='font-size:10.5px;padding:3px 8px'>{data.tr_muscle(m)}</span>" for m in e["primary"][:3])
+    st.markdown(
+        f"<div class='fcard' style='display:flex;align-items:center;gap:12px;padding:11px 14px;margin-bottom:8px'>"
+        f"<div style='width:34px;height:34px;border-radius:50%;background:color-mix(in srgb,{color} 20%,var(--surface-2));color:{color};"
+        f"font-family:Nunito;font-weight:800;font-size:14px;display:flex;align-items:center;justify-content:center;flex-shrink:0'>{i}</div>"
+        f"<div style='flex:1;min-width:0'><div style='font-weight:700;font-size:14px'>{e['name']}</div>"
+        f"<div class='chiprow' style='margin-top:4px'>{chips}</div></div>"
+        f"<div style='font-family:Nunito;font-weight:800;color:{color};font-size:15px;flex-shrink:0'>{e['sets']}×{e['reps']}</div></div>",
+        unsafe_allow_html=True,
+    )
+
+
+def page_plan():
+    end = WEEK_START + dt.timedelta(days=6)
+    st.markdown(
+        f"<h1 style='margin:0'>Plan</h1><div class='muted' style='font-size:13px;margin-bottom:12px'>"
+        f"{WEEK_START.day} {MON[WEEK_START.month-1]}–{end.day} {MON[end.month-1]} · {P.SESSIONS_PER_WEEK} antrenman</div>",
+        unsafe_allow_html=True,
+    )
+    sel = int(S.get("plan_day", TODAY.weekday()))
     done = {w["date"] for w in S["workouts"]}
     pad = set(S["padel"])
-    cells = []
-    for i in range(7):
+
+    # clickable day strip — pick any day to see its plan
+    cols = st.columns(7)
+    for i, col in enumerate(cols):
         d = WEEK_START + dt.timedelta(days=i)
         iso = d.strftime("%Y-%m-%d")
         day = P.DAYS[i]
         color = P.FOCUS_COLOR[day["focus"]]
-        is_today = d == TODAY
-        dot = "var(--green)" if iso in done or iso in pad else (color if day["focus"] != "rest" else "transparent")
-        border = f"1px solid {color}" if is_today else "1px solid var(--line)"
-        cells.append(
-            f"<div style='flex:1;text-align:center;background:var(--surface);border:{border};border-radius:12px;padding:8px 0'>"
-            f"<div style='font-size:10px;color:var(--faint);font-weight:700'>{DOW[i]}</div>"
-            f"<div style='font-size:15px;font-weight:800;margin-top:3px;{'color:'+color if is_today else ''}'>{d.day}</div>"
-            f"<div style='width:5px;height:5px;border-radius:50%;margin:5px auto 0;background:{dot}'></div></div>"
-        )
-    st.markdown(f"<div style='display:flex;gap:4px;margin-bottom:14px'>{''.join(cells)}</div>", unsafe_allow_html=True)
+        dot = "var(--green)" if (iso in done or iso in pad) else (color if day["focus"] != "rest" else "var(--line)")
+        with col:
+            st.markdown(
+                f"<div style='text-align:center;font-size:10px;color:var(--faint);font-weight:700'>{DOW[i]}"
+                f"<span style='display:inline-block;width:5px;height:5px;border-radius:50%;background:{dot};margin-inline-start:4px;vertical-align:middle'></span></div>",
+                unsafe_allow_html=True,
+            )
+            st.button(str(d.day), key=f"pd_{i}", use_container_width=True,
+                      type="primary" if i == sel else "secondary", on_click=lambda i=i: S.__setitem__("plan_day", i))
 
+    day = P.DAYS[sel]
+    color = P.FOCUS_COLOR[day["focus"]]
+    sel_date = WEEK_START + dt.timedelta(days=sel)
+    title = "Bugün" if sel == TODAY.weekday() else DOW_LONG[sel]
+    st.markdown(f"<p class='eyebrow' style='margin-top:14px'>{title}</p>", unsafe_allow_html=True)
 
-def page_plan():
-    st.markdown(f"<h1 style='margin:0'>Plan</h1><div class='muted' style='font-size:13px;margin-bottom:14px'>{WEEK_START.day} {MON[WEEK_START.month-1]}–{(WEEK_START+dt.timedelta(days=6)).day} {MON[(WEEK_START+dt.timedelta(days=6)).month-1]} · {P.SESSIONS_PER_WEEK} antrenman</div>", unsafe_allow_html=True)
-    _week_strip()
-    today_day = P.day_for(TODAY.weekday())
-
-    # today hero with exercise list
-    if today_day["exercises"]:
-        color = P.FOCUS_COLOR[today_day["focus"]]
-        load = P.day_load(today_day)
-        chips = "".join(f"<span class='chip'>{g}</span>" for g in P.day_groups(today_day))
-        rows = "".join(
-            f"<div style='display:flex;align-items:center;gap:10px;padding:9px 0;border-top:1px solid var(--line)'>"
-            f"<span style='width:22px;height:22px;border-radius:7px;background:color-mix(in srgb,{color} 18%,transparent);color:{color};font-weight:800;font-size:12px;display:flex;align-items:center;justify-content:center'>{i+1}</span>"
-            f"<span style='flex:1;font-weight:600;font-size:14px'>{e['name']}</span>"
-            f"<span class='muted' style='font-size:13px;font-weight:600'>{e['sets']}×{e['reps']}</span></div>"
-            for i, e in enumerate(P.day_details(today_day))
-        )
+    if day["exercises"]:
+        load = P.day_load(day)
+        chips = "".join(f"<span class='chip'>{g}</span>" for g in P.day_groups(day))
         st.markdown(
-            f"<p class='eyebrow'>Bugün</p>"
             f"<div class='hero' style='background:radial-gradient(130% 90% at 100% 0%, color-mix(in srgb,{color} 28%,transparent), transparent 60%), linear-gradient(165deg, color-mix(in srgb,{color} 13%,var(--surface)), var(--surface) 80%);border:1px solid color-mix(in srgb,{color} 26%,var(--line))'>"
-            f"<div class='kick' style='color:{color}'>● {today_day['tag']}</div><h2>{today_day['name']}</h2>"
+            f"<div class='kick' style='color:{color}'>● {day['tag']}</div><h2>{day['name']}</h2>"
             f"<div class='chiprow'>{chips}</div>"
-            f"<div style='color:var(--muted);font-size:13px;margin:8px 0 6px'>{load['exercises']} egzersiz · {load['sets']} set · ~{load['minutes']} dk</div>"
-            f"{rows}</div>",
+            f"<div style='color:var(--muted);font-size:13px;margin-top:8px'>{load['exercises']} egzersiz · {load['sets']} set · ~{load['minutes']} dk</div></div>",
             unsafe_allow_html=True,
         )
-        st.button("▶ Antrenmana git", type="primary", use_container_width=True, on_click=navigate, args=("workout",))
-
-    # upcoming days
-    st.markdown("<p class='eyebrow' style='margin-top:16px'>Haftanın geri kalanı</p>", unsafe_allow_html=True)
-    for i in range(7):
-        if i == TODAY.weekday():
-            continue
-        day = P.DAYS[i]
-        color = P.FOCUS_COLOR[day["focus"]]
-        sub = (f"{P.day_load(day)['exercises']} egzersiz · ~{P.day_load(day)['minutes']} dk" if day["exercises"] else day.get("note", ""))
-        chips = "".join(f"<span class='chip' style='font-size:11px'>{g}</span>" for g in P.day_groups(day)) if day["exercises"] else ""
-        chips = f"<div class='chiprow' style='margin:7px 0 0'>{chips}</div>" if chips else ""
+        for i, e in enumerate(P.day_details(day), 1):
+            _plan_exercise_box(i, e, color)
+        if sel == TODAY.weekday():
+            st.button("▶ Antrenmana git", type="primary", use_container_width=True, on_click=navigate, args=("workout",))
+    else:
         st.markdown(
-            f"<div style='display:flex;background:var(--surface);border:1px solid var(--line);border-radius:16px;overflow:hidden;margin-bottom:9px'>"
-            f"<div style='width:5px;background:{color}'></div>"
-            f"<div style='padding:12px 14px;flex:1'>"
-            f"<div style='font-weight:800;font-size:14px'>{DOW_LONG[i]} "
-            f"<span style='font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:{color};background:color-mix(in srgb,{color} 15%,transparent);padding:2px 7px;border-radius:6px;margin-inline-start:4px'>{day['tag'] or 'Dinlenme'}</span></div>"
-            f"<div class='muted' style='font-size:12.5px;margin-top:3px'>{sub}</div>{chips}</div></div>",
+            f"<div class='hero' style='background:linear-gradient(165deg, color-mix(in srgb,{color} 12%,var(--surface)), var(--surface) 80%);border:1px solid var(--line)'>"
+            f"<div class='kick' style='color:{color}'>● {day['tag'] or 'Dinlenme'}</div><h2>{day['name']}</h2>"
+            f"<div style='color:var(--muted);font-size:13px;margin-top:6px'>{day.get('note','')}</div></div>",
             unsafe_allow_html=True,
         )
 
