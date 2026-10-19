@@ -24,6 +24,7 @@ PROTEIN_PER_KG = 1.8
 S.setdefault("weights", [{"date": "2026-10-12", "w": 101.1}, {"date": "2026-10-16", "w": 101.1}, {"date": "2026-10-19", "w": 100.5}])
 S.setdefault("workouts", [])          # [{date, key, name, muscles:(primary,secondary)}]
 S.setdefault("padel", [])             # [iso date]
+S.setdefault("setlog", {})            # "date|daykey|exid" -> completed set count
 S.setdefault("nutrition", None)       # DataFrame or None
 
 TODAY = dt.date.today()
@@ -237,17 +238,41 @@ def page_plan():
         )
 
 
-def _exercise_row(i, e, color):
-    """Compact row (number · name · sets×reps); tap to reveal the muscle map + details."""
-    with st.expander(f"{i}.  {e['name']}   ·   {e['sets']}×{e['reps']}"):
-        st.markdown(f"<div class='muted' style='font-size:12.5px;margin:-4px 0 8px'>{data.tr_eq(e.get('eq',''))}</div>", unsafe_allow_html=True)
-        chips = "".join(f"<span class='chip' style='font-size:11px'>{data.tr_muscle(m)}</span>" for m in (e["primary"] + e["secondary"])[:5])
-        st.markdown(
-            bodymap.body_map(e["primary"], e["secondary"]) + ui.legend(color)
-            + f"<div class='chiprow' style='margin-top:10px'>{chips}</div>"
-            f"<div class='muted' style='font-size:12.5px;margin-top:8px'>💡 {e.get('tip','')}</div>",
-            unsafe_allow_html=True,
-        )
+def _exercise_box(i, e, color, day_key, date_iso):
+    """A functional exercise box: a set-progress ring, the move, set-complete buttons, and a
+    tap-to-reveal muscle map. The ring fills as sets are marked done."""
+    key = f"{date_iso}|{day_key}|{e['id']}"
+    total = int(e["sets"])
+    done = S["setlog"].get(key, 0)
+    finished = done >= total
+    with st.container(border=True):
+        c1, c2 = st.columns([1, 3.2])
+        with c1:
+            ringcol = "var(--green)" if finished else color
+            st.markdown(
+                f"<div style='text-align:center'>{ui.ring_svg(done / total if total else 0, ringcol, 54)}"
+                f"<div style='font-family:Nunito;font-weight:800;font-size:13px;margin-top:2px'>{done}/{total}</div></div>",
+                unsafe_allow_html=True,
+            )
+        with c2:
+            chips = "".join(f"<span class='chip' style='font-size:10.5px;padding:3px 8px'>{data.tr_muscle(m)}</span>" for m in e["primary"][:3])
+            st.markdown(
+                f"<div style='font-weight:700;font-size:15px'>{i}. {e['name']} {'✅' if finished else ''}</div>"
+                f"<div style='font-family:Nunito;font-weight:800;color:{color};font-size:14px;margin:2px 0 4px'>{e['sets']}×{e['reps']}</div>"
+                f"<div class='chiprow'>{chips}</div>",
+                unsafe_allow_html=True,
+            )
+        b1, b2, _ = st.columns([1.3, 1, 2])
+        if b1.button("✓ Set", key=f"s_{key}", use_container_width=True, disabled=finished):
+            S["setlog"][key] = min(total, done + 1)
+            st.rerun()
+        if b2.button("↺", key=f"r_{key}", use_container_width=True, disabled=done == 0):
+            S["setlog"][key] = 0
+            st.rerun()
+        with st.expander("Hangi kası çalıştırır?"):
+            st.markdown(f"<div class='muted' style='font-size:12.5px;margin:-4px 0 6px'>{data.tr_eq(e.get('eq',''))}</div>", unsafe_allow_html=True)
+            st.markdown(bodymap.body_map(e["primary"], e["secondary"]) + ui.legend(color), unsafe_allow_html=True)
+            st.markdown(f"<div class='muted' style='font-size:12.5px;margin-top:8px'>💡 {e.get('tip','')}</div>", unsafe_allow_html=True)
 
 
 def page_workout():
@@ -266,11 +291,18 @@ def page_workout():
         f"<div class='muted' style='font-size:13px;margin:2px 0 12px'>{day['note']} · {load['exercises']} egzersiz · {load['sets']} set · ~{load['minutes']} dk</div>",
         unsafe_allow_html=True,
     )
-    st.caption("Bir harekete dokun → hangi kası çalıştırdığını kas haritasında gör.")
-    for i, e in enumerate(P.day_details(day), 1):
-        _exercise_row(i, e, color)
-
     done_iso = TODAY.strftime("%Y-%m-%d")
+    done_sets = sum(S["setlog"].get(f"{done_iso}|{day['key']}|{e['id']}", 0) for e in day["exercises"])
+    st.markdown(
+        f"<div class='fcard' style='padding:10px 14px;display:flex;align-items:center;gap:10px'>"
+        f"<div style='flex:1'><div style='height:8px;border-radius:5px;background:var(--surface-2);overflow:hidden'>"
+        f"<div style='height:100%;width:{round(done_sets/load['sets']*100) if load['sets'] else 0}%;background:{color};border-radius:5px'></div></div></div>"
+        f"<div style='font-family:Nunito;font-weight:800;font-size:13px'>{done_sets}/{load['sets']} set</div></div>",
+        unsafe_allow_html=True,
+    )
+    for i, e in enumerate(P.day_details(day), 1):
+        _exercise_box(i, e, color, day["key"], done_iso)
+
     already = any(w["date"] == done_iso and w.get("key") == day["key"] for w in S["workouts"])
     if already:
         st.success("Bugün bu antrenman tamamlandı ✓")
