@@ -24,11 +24,11 @@ h1,h2,h3 { font-family:"Nunito",sans-serif !important; letter-spacing:-.02em; }
 
 .fcard{ background:var(--surface); border:1px solid var(--line); border-radius:20px; padding:16px; margin-bottom:12px; }
 .eyebrow{ font-size:11.5px; text-transform:uppercase; letter-spacing:.11em; color:var(--faint); font-weight:800; margin:0 0 10px; }
-.rings{ display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-bottom:6px; }
-.ringcard{ background:var(--surface); border:1px solid var(--line); border-radius:20px; padding:14px 6px 12px; text-align:center; }
-.ringcard .v{ font-family:"Nunito"; font-weight:800; font-size:16px; margin-top:6px; }
-.ringcard .v small{ color:var(--faint); font-weight:700; }
-.ringcard .k{ font-size:11px; color:var(--muted); font-weight:600; margin-top:2px; }
+.rings{ display:grid; grid-template-columns:repeat(4,1fr); gap:7px; margin-bottom:8px; }
+.ringcard{ background:var(--surface); border:1px solid var(--line); border-radius:17px; padding:12px 3px 10px; text-align:center; }
+.ringcard .v{ font-family:"Nunito"; font-weight:800; font-size:13.5px; margin-top:6px; line-height:1; }
+.ringcard .v small{ color:var(--faint); font-weight:700; font-size:.82em; }
+.ringcard .k{ font-size:10.5px; color:var(--muted); font-weight:600; margin-top:3px; }
 .hero{ border-radius:24px; padding:20px; margin-bottom:8px; position:relative; overflow:hidden; }
 .hero .kick{ font-size:11.5px; font-weight:800; text-transform:uppercase; letter-spacing:.1em; }
 .hero h2{ font-size:26px; font-weight:900; margin:8px 0 4px; }
@@ -70,8 +70,8 @@ def ring_svg(pct: float, color: str, size: int = 54) -> str:
     )
 
 
-def ring(pct: float, color: str, value_html: str, label: str) -> str:
-    return (f'<div class="ringcard">{ring_svg(pct, color)}'
+def ring(pct: float, color: str, value_html: str, label: str, size: int = 54) -> str:
+    return (f'<div class="ringcard">{ring_svg(pct, color, size)}'
             f'<div class="v">{value_html}</div><div class="k">{label}</div></div>')
 
 

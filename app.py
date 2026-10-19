@@ -98,20 +98,14 @@ def page_home():
     wk = len(workouts_week())
     pad = len(padel_week())
 
-    # written summary line
-    st.markdown(
-        f"<div class='fcard' style='padding:13px 16px'><div style='font-size:13px;line-height:1.7'>"
-        f"<b>Bu hafta:</b> {wk}/3 antrenman&nbsp;·&nbsp;{pad} padel&nbsp;·&nbsp;"
-        f"protein {prot}/{t['protein']} g&nbsp;·&nbsp;{kcal}/{t['kcal']} kcal</div></div>",
-        unsafe_allow_html=True,
-    )
-    deficit = kcal - t["kcal"] if nt else None
-    r1 = ui.ring(wk / 3 if wk else 0, "var(--blue)", f"{wk}<small>/3</small>", "Antrenman")
-    r2 = ui.ring(prot / t["protein"] if t["protein"] else 0, "var(--orange)", f"{prot}<small>/{t['protein']} g</small>", "Protein")
-    klbl = f"Kalori{' · ' + ('+' if deficit > 0 else '') + str(deficit) if deficit is not None else ''}"
-    r3 = ui.ring(kcal / t["kcal"] if t["kcal"] else 0, "var(--green)", f"{kcal}<small>/{t['kcal']}</small>", klbl)
-    st.markdown(f"<div class='rings'>{r1}{r2}{r3}</div>", unsafe_allow_html=True)
-    if st.button("🎾 Padel yaptım", use_container_width=True):
+    # four rings = the week at a glance (antrenman / padel / protein / kalori)
+    pad_t = 2  # planned padel days/week
+    r1 = ui.ring(wk / 3 if wk else 0, "var(--blue)", f"{wk}<small>/3</small>", "Antrenman", 44)
+    r2 = ui.ring(pad / pad_t if pad_t else 0, "var(--teal)", f"{pad}<small>/{pad_t}</small>", "Padel", 44)
+    r3 = ui.ring(prot / t["protein"] if t["protein"] else 0, "var(--orange)", f"{prot}<small>/{t['protein']}</small>", "Protein", 44)
+    r4 = ui.ring(kcal / t["kcal"] if t["kcal"] else 0, "var(--green)", f"{kcal}<small>/{t['kcal']}</small>", "Kalori", 44)
+    st.markdown(f"<div class='rings'>{r1}{r2}{r3}{r4}</div>", unsafe_allow_html=True)
+    if st.button("🎾 Padel ekle", use_container_width=True):
         iso = TODAY.strftime("%Y-%m-%d")
         if iso not in S["padel"]:
             S["padel"].append(iso)
@@ -155,14 +149,6 @@ def page_home():
             f"</div></div>",
             unsafe_allow_html=True,
         )
-    # streak
-    st.markdown(
-        f"<div class='fcard' style='display:flex;align-items:center;gap:14px'>"
-        f"<div style='width:42px;height:42px;border-radius:12px;background:color-mix(in srgb,var(--orange) 16%,var(--surface-2));color:var(--orange);display:flex;align-items:center;justify-content:center;font-size:20px'>🔥</div>"
-        f"<div><div style='font-family:Nunito;font-weight:900;font-size:19px'>{len(S['workouts'])} antrenman kayıtlı</div>"
-        f"<div class='muted' style='font-size:13px'>Bu hafta {len(workouts_week())}/3 · {len(padel_week())} padel</div></div></div>",
-        unsafe_allow_html=True,
-    )
 
 
 def _week_strip():
@@ -485,13 +471,14 @@ def page_nutrition():
 PAGES = {"home": page_home, "plan": page_plan, "workout": page_workout, "stats": page_stats, "nutrition": page_nutrition}
 PAGES[S["page"]]()
 
-st.markdown("<div style='height:8px'></div>", unsafe_allow_html=True)
-NAV = [("plan", "🗓", "Plan"), ("workout", "🏋️", "Antrenman"), ("home", "🏠", "Ana Sayfa"), ("stats", "📊", "İstatistik"), ("nutrition", "🔥", "Beslenme")]
-cols = st.columns([1, 1, 1.3, 1, 1])
-for col, (key, icon, label) in zip(cols, NAV):
+st.markdown("<div style='height:6px'></div>", unsafe_allow_html=True)
+NAV = [("plan", "🗓"), ("workout", "🏋️"), ("home", "🏠"), ("stats", "📊"), ("nutrition", "🔥")]
+LABEL = {"plan": "Plan", "workout": "Antrenman", "home": "Ana Sayfa", "stats": "İstatistik", "nutrition": "Beslenme"}
+cols = st.columns([1, 1, 1.25, 1, 1])
+for col, (key, icon) in zip(cols, NAV):
     with col:
-        st.button(f"{icon}\n\n{label}" if key == "home" else f"{icon} {label}",
-                  key=f"nav_{key}", use_container_width=True,
+        st.button(icon, key=f"nav_{key}", use_container_width=True,
                   type="primary" if S["page"] == key else "secondary",
                   on_click=navigate, args=(key,))
-st.caption("Tasarım önizlemesi · program sana özel otomatik oluşturuldu · veriler şimdilik oturum içinde")
+st.markdown(f"<div style='text-align:center;color:var(--faint);font-size:11px;margin-top:2px'>{LABEL[S['page']]}</div>", unsafe_allow_html=True)
+st.caption("Tasarım önizlemesi · program sana özel · veriler şimdilik oturum içinde")
