@@ -18,6 +18,12 @@ def test_parse_weights_empty():
     assert sheets.parse_weights(pd.DataFrame()) == []
 
 
+def test_parse_weights_apple_date_format():
+    # Apple Shortcuts often send "20 Oct 2026 at 09:08"
+    df = pd.DataFrame({"date": ["20 Oct 2026 at 09:08"], "weight_kg": [100.5]})
+    assert sheets.parse_weights(df) == [{"date": "2026-10-20", "w": 100.5}]
+
+
 def test_parse_workouts_and_padel():
     df = pd.DataFrame({
         "date": ["2026-10-18", "2026-10-19"],
