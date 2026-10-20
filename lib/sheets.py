@@ -32,6 +32,12 @@ def _col(df: pd.DataFrame, *names):
     return None
 
 
+def _to_date(value):
+    """Parse dates tolerantly, including Apple's '20 Oct 2026 at 09:08'. Returns a Timestamp or NaT."""
+    s = str(value).replace(" at ", " ")
+    return pd.to_datetime(s, errors="coerce")
+
+
 def parse_weights(df: pd.DataFrame) -> list[dict]:
     """[{date 'YYYY-MM-DD', w float}] from a Weight tab (date + weight_kg/weight/kg)."""
     if df is None or df.empty:
@@ -42,7 +48,7 @@ def parse_weights(df: pd.DataFrame) -> list[dict]:
         return []
     out = []
     for _, row in df.iterrows():
-        d = pd.to_datetime(row[dcol], errors="coerce")
+        d = _to_date(row[dcol])
         w = pd.to_numeric(row[wcol], errors="coerce")
         if pd.notna(d) and pd.notna(w) and 30 < float(w) < 300:
             out.append({"date": d.strftime("%Y-%m-%d"), "w": round(float(w), 1)})
@@ -64,7 +70,7 @@ def parse_workouts(df: pd.DataFrame) -> pd.DataFrame:
     if not dcol:
         return pd.DataFrame(columns=["date", "type", "minutes", "kcal"])
     out = pd.DataFrame()
-    out["date"] = pd.to_datetime(df[dcol], errors="coerce").dt.strftime("%Y-%m-%d")
+    out["date"] = df[dcol].apply(_to_date).dt.strftime("%Y-%m-%d")
     out["type"] = df[tcol].astype(str) if tcol else ""
     out["minutes"] = pd.to_numeric(df[mcol], errors="coerce").fillna(0) if mcol else 0
     out["kcal"] = pd.to_numeric(df[kcol], errors="coerce").fillna(0) if kcol else 0
