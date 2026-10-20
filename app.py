@@ -47,17 +47,27 @@ def _sheet_id():
 
 @st.cache_data(ttl=300, show_spinner=False)
 def _sheet(sheet_id: str):
-    """(weights[list], padel_dates[list], workout_count) from the Google Sheet. Cached 5 min."""
+    """(weights, padel_dates, workout_count, daily_dict) from the Google Sheet. Cached 5 min."""
     w = sheets.parse_weights(sheets.fetch_tab(sheet_id, "Weight"))
     wo = sheets.parse_workouts(sheets.fetch_tab(sheet_id, "Workouts"))
-    return w, sheets.padel_dates(wo), int(len(wo))
+    daily = sheets.parse_daily(sheets.fetch_tab(sheet_id, "Daily"))
+    return w, sheets.padel_dates(wo), int(len(wo)), daily
 
 
 def _sheet_data():
     try:
         return _sheet(_sheet_id())
     except Exception:  # noqa: BLE001
-        return [], [], 0
+        return [], [], 0, {}
+
+
+def today_activity():
+    """Today's Apple-Health activity (steps/active kcal/exercise min/distance), or latest day."""
+    daily = _sheet_data()[3]
+    if not daily:
+        return None
+    iso = TODAY.strftime("%Y-%m-%d")
+    return daily.get(iso) or daily[sorted(daily)[-1]]
 
 
 def weights_df():
@@ -163,6 +173,19 @@ def page_home():
     r3 = ui.ring(prot / t["protein"] if t["protein"] else 0, "var(--orange)", f"{prot}<small>/{t['protein']}</small>", "Protein", 44)
     r4 = ui.ring(kcal / t["kcal"] if t["kcal"] else 0, "var(--green)", f"{kcal}<small>/{t['kcal']}</small>", "Kalori", 44)
     st.markdown(f"<div class='rings'>{r1}{r2}{r3}{r4}</div>", unsafe_allow_html=True)
+
+    # Apple Health activity (from the Google Sheet) — steps / active kcal / exercise min / distance
+    act = today_activity()
+    if act:
+        st.markdown(
+            "<div class='fcard' style='display:grid;grid-template-columns:repeat(4,1fr);gap:6px;text-align:center;padding:13px 8px;margin-top:2px'>"
+            f"<div><div style='font-family:Nunito;font-weight:900;font-size:17px'>{int(act['steps'])}</div><div class='muted' style='font-size:10.5px'>adım</div></div>"
+            f"<div><div style='font-family:Nunito;font-weight:900;font-size:17px'>{int(act['active_kcal'])}</div><div class='muted' style='font-size:10.5px'>aktif kcal</div></div>"
+            f"<div><div style='font-family:Nunito;font-weight:900;font-size:17px'>{int(act['exercise_min'])}</div><div class='muted' style='font-size:10.5px'>egz. dk</div></div>"
+            f"<div><div style='font-family:Nunito;font-weight:900;font-size:17px'>{act['distance_km']:.1f}</div><div class='muted' style='font-size:10.5px'>km</div></div>"
+            "</div>",
+            unsafe_allow_html=True,
+        )
 
     # today hero from the program
     day = P.day_for(TODAY.weekday())
@@ -537,11 +560,14 @@ def page_nutrition():
         st.success("Kaydedildi (bu oturumda).")
         st.rerun()
 
-    sw, spd, swo = _sheet_data()
-    if sw or spd or swo:
-        st.caption(f"🔗 Google Sheet senkron: {len(sw)} kilo · {len(spd)} padel · {swo} antrenman kaydı")
+    sw, spd, swo, sdaily = _sheet_data()
+    if sw or spd or swo or sdaily:
+        st.caption(f"🔗 Google Sheet senkron: {len(sw)} kilo · {len(spd)} padel · {swo} workout · {len(sdaily)} günlük aktivite")
     else:
-        st.caption("🔗 Google Sheet henüz boş/bağlı değil. Apple Health otomasyonu kurulunca kilo ve spor buraya düşecek.")
+        st.caption("🔗 Google Sheet henüz boş/bağlı değil. Apple Health otomasyonu kurulunca veriler buraya düşecek.")
+    if st.button("🔄 Şimdi senkronla", use_container_width=True):
+        _sheet.clear()
+        st.rerun()
 
     t = S["targets"]
     wkg = latest_weight()[0] or 100.0

@@ -82,3 +82,35 @@ def padel_dates(workouts: pd.DataFrame) -> list[str]:
         return []
     mask = workouts["type"].astype(str).str.lower().apply(lambda s: any(k in s for k in _PADEL))
     return sorted(set(workouts.loc[mask, "date"]))
+
+
+def _num(row, col):
+    if not col:
+        return 0.0
+    v = pd.to_numeric(row.get(col), errors="coerce")
+    return 0.0 if pd.isna(v) else round(float(v), 1)
+
+
+def parse_daily(df: pd.DataFrame) -> dict:
+    """{ 'YYYY-MM-DD': {active_kcal, exercise_min, steps, distance_km} } from a Daily tab."""
+    if df is None or df.empty:
+        return {}
+    dcol = _col(df, "date", "day", "tarih")
+    if not dcol:
+        return {}
+    acol = _col(df, "active_kcal", "active energy", "active_energy", "aktif_kalori")
+    ecol = _col(df, "exercise_min", "exercise minutes", "exercise_minutes", "egzersiz_dk")
+    scol = _col(df, "steps", "adim", "adım")
+    kcol = _col(df, "distance_km", "distance", "mesafe", "distance_walkrun")
+    out = {}
+    for _, row in df.iterrows():
+        d = _to_date(row[dcol])
+        if pd.isna(d):
+            continue
+        out[d.strftime("%Y-%m-%d")] = {
+            "active_kcal": _num(row, acol),
+            "exercise_min": _num(row, ecol),
+            "steps": _num(row, scol),
+            "distance_km": _num(row, kcol),
+        }
+    return out
