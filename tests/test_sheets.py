@@ -39,3 +39,19 @@ def test_parse_workouts_and_padel():
 def test_padel_matches_tennis_alias():
     df = pd.DataFrame({"date": ["2026-10-20"], "type": ["Tennis"]})
     assert sheets.padel_dates(sheets.parse_workouts(df)) == ["2026-10-20"]
+
+
+def test_parse_daily():
+    df = pd.DataFrame({
+        "date": ["2026-Oct-20"], "active_kcal": [620], "exercise_min": [45],
+        "steps": [8200], "distance_km": [6.3],
+    })
+    d = sheets.parse_daily(df)
+    assert "2026-10-20" in d
+    assert d["2026-10-20"] == {"active_kcal": 620.0, "exercise_min": 45.0, "steps": 8200.0, "distance_km": 6.3}
+
+
+def test_parse_daily_empty_and_missing_cols():
+    assert sheets.parse_daily(pd.DataFrame()) == {}
+    d = sheets.parse_daily(pd.DataFrame({"date": ["2026-10-20"], "steps": [5000]}))
+    assert d["2026-10-20"]["steps"] == 5000.0 and d["2026-10-20"]["active_kcal"] == 0.0
