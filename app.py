@@ -357,10 +357,15 @@ def page_home():
             )
             st.button("▶ Antrenmana git", type="primary", use_container_width=True, on_click=navigate, args=("workout",))
         else:
+            cardio = P.day_cardio(day)
+            extra = ""
+            if cardio:
+                chips = "".join(f"<span class='chip'>{P.CARDIO_ICON.get(c['type'],'🔥')} {c['name']} · {c['minutes']} dk</span>" for c in cardio)
+                extra = f"<div class='chiprow' style='margin-top:10px'>{chips}</div>"
             st.markdown(
                 f"<div class='hero' style='background:linear-gradient(165deg, color-mix(in srgb,{color} 12%,var(--surface)), var(--surface) 80%);border:1px solid var(--line)'>"
                 f"<div class='kick' style='color:{color}'>● {day['tag'] or 'Bugün'}</div>"
-                f"<h2>{day['name']}</h2><div style='color:var(--muted);font-size:13px;margin-top:6px'>{day.get('note','')}</div></div>",
+                f"<h2>{day['name']}</h2><div style='color:var(--muted);font-size:13px;margin-top:6px'>{day.get('note','')}</div>{extra}</div>",
                 unsafe_allow_html=True,
             )
 
@@ -426,6 +431,20 @@ def _plan_exercise_box(i, e, color):
     )
 
 
+def _cardio_box(c):
+    """Cardio action card (HTML only, tiles in the grid): icon + name + duration badge + how-to."""
+    icon = P.CARDIO_ICON.get(c.get("type"), "🔥")
+    return (
+        f"<div class='exrow' style='align-items:flex-start'>"
+        f"<div style='width:38px;height:38px;border-radius:50%;background:color-mix(in srgb,var(--green) 18%,var(--surface-2));"
+        f"display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:19px'>{icon}</div>"
+        f"<div style='flex:1;min-width:0'>"
+        f"<div style='display:flex;align-items:baseline;gap:8px'><div style='font-weight:700;font-size:14px'>{c['name']}</div>"
+        f"<div style='font-family:Nunito;font-weight:800;color:var(--green);font-size:14px'>{c['minutes']} dk</div></div>"
+        f"<div class='muted' style='font-size:12px;margin-top:4px;line-height:1.5'>{c.get('tip','')}</div></div></div>"
+    )
+
+
 def page_plan():
     end = WEEK_START + dt.timedelta(days=6)
     st.markdown(
@@ -476,6 +495,16 @@ def page_plan():
             st.markdown("<div style='height:8px'></div>", unsafe_allow_html=True)
             c = st.columns([1, 1, 1])[0]
             c.button("▶ Antrenmana git", type="primary", use_container_width=True, on_click=navigate, args=("workout",))
+    elif P.day_cardio(day):
+        cl = P.cardio_load(day)
+        st.markdown(
+            f"<div class='hero' style='background:radial-gradient(130% 90% at 100% 0%, color-mix(in srgb,{color} 24%,transparent), transparent 60%), linear-gradient(165deg, color-mix(in srgb,{color} 12%,var(--surface)), var(--surface) 80%);border:1px solid color-mix(in srgb,{color} 24%,var(--line))'>"
+            f"<div class='kick' style='color:{color}'>● {day['tag']}</div><h2>{day['name']}</h2>"
+            f"<div style='color:var(--muted);font-size:13px;margin-top:6px'>{day.get('note','')} · {cl['min_lo']}–{cl['min_hi']} dk</div></div>",
+            unsafe_allow_html=True,
+        )
+        boxes = "".join(_cardio_box(c) for c in P.day_cardio(day))
+        st.markdown(f"<div class='exgrid'>{boxes}</div>", unsafe_allow_html=True)
     else:
         st.markdown(
             f"<div class='hero' style='background:linear-gradient(165deg, color-mix(in srgb,{color} 12%,var(--surface)), var(--surface) 80%);border:1px solid var(--line)'>"
@@ -528,7 +557,13 @@ def page_workout():
     names = [d["name"] for d in training]
     today = P.day_for(TODAY.weekday())
     default = today["name"] if today in training else names[0]
-    if not (today["exercises"]):
+    # today is a cardio day → show the cardio actions up top (they auto-track via Apple Health → Crono)
+    if P.day_cardio(today):
+        boxes = "".join(_cardio_box(c) for c in P.day_cardio(today))
+        st.markdown(f"<p class='eyebrow'>Bugün · {today['name']}</p>", unsafe_allow_html=True)
+        st.markdown(f"<div class='exgrid' style='margin-bottom:10px'>{boxes}</div>", unsafe_allow_html=True)
+        st.caption("Kürek/eliptik/bisiklet Apple Health'ten Crono'ya düşünce İstatistik'te otomatik işaretlenir. Aşağıdan bir güç antrenmanı da seçebilirsin.")
+    elif not today["exercises"]:
         st.info(f"Bugün **{today['name']}** — {today.get('note','')}. İstersen aşağıdan bir antrenman seç ve çalış.")
     choice = st.segmented_control("Antrenman", names, default=default, key="wsel") or default
     day = next(d for d in training if d["name"] == choice)
@@ -562,6 +597,13 @@ def page_workout():
         S["workouts"].append({"date": done_iso, "key": day["key"], "name": day["name"], "primary": prim, "secondary": sec})
         st.success(f"{day['name']} kaydedildi (bu oturumda).")
         st.rerun()
+
+    cardio_day = next((d for d in P.DAYS if P.day_cardio(d)), None)
+    if cardio_day:
+        with st.expander("🚴 Kardiyo seçenekleri (kürek · eliptik · bisiklet)"):
+            boxes = "".join(_cardio_box(c) for c in P.day_cardio(cardio_day))
+            st.markdown(f"<div class='exgrid'>{boxes}</div>", unsafe_allow_html=True)
+            st.caption("Padel'e ek haftada 1 kardiyo hedefi. Hangisini yaparsan yap Apple Health → Crono üzerinden İstatistik'e düşer.")
 
     with st.expander("🔎 Egzersiz ara (hangi kası çalıştırır)"):
         q = st.text_input("Ara", placeholder="örn. shoulder press", label_visibility="collapsed", key="exq")

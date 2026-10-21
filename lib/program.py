@@ -45,9 +45,20 @@ DAYS = [
          {"id": "0407", "sets": 3, "reps": "15/yön", "tip": "Bel/yan karın; tek dambıl, yana eğil."},
      ]},
     {"wd": 5, "key": "cardio", "name": "Kardiyo", "focus": "cardio", "tag": "Kardiyo",
-     "note": "Kürek 20 dk interval + eliptik 10 dk", "exercises": []},
+     "note": "Düşük etkili kardiyo — birini seç ya da kürek + eliptiği birleştir", "exercises": [],
+     "cardio": [
+         {"name": "Kürek (rower)", "type": "Kürek", "minutes": 20, "kcal": 200,
+          "tip": "20 dk interval: 1 dk güçlü çek / 1 dk kolay. Sırt, bacak ve nefes bir arada."},
+         {"name": "Eliptik", "type": "Eliptik", "minutes": 15, "kcal": 150,
+          "tip": "15 dk orta tempo; eklem dostu, toparlanma kardiyosu — kürek sonrası ideal."},
+         {"name": "Bisiklet", "type": "Bisiklet", "minutes": 25, "kcal": 220,
+          "tip": "Alternatif: 25 dk sabit tempo ya da 5×(1 dk sprint / 2 dk kolay)."},
+     ]},
     {"wd": 6, "key": "rest", "name": "Dinlenme", "focus": "rest", "tag": "", "note": "Toparlanma", "exercises": []},
 ]
+
+# icon per cardio type (matches Cronometer's cleaned labels, so Stats auto-matches these sessions)
+CARDIO_ICON = {"Kürek": "🚣", "Eliptik": "🏃", "Bisiklet": "🚴", "Kardiyo": "🔥"}
 
 TRAINING_DAYS = [d for d in DAYS if d["exercises"]]  # the 3 lifting days
 SESSIONS_PER_WEEK = len([d for d in DAYS if d["focus"] in ("upper", "lower", "full")]) + 1  # +cardio = 4
@@ -91,6 +102,18 @@ def day_load(day: dict) -> dict:
     sets = sum(int(e.get("sets", 0)) for e in day["exercises"])
     minutes = max(5, round(sets * 3 / 5) * 5) if sets else 0
     return {"exercises": len(day["exercises"]), "sets": sets, "minutes": minutes}
+
+
+def day_cardio(day: dict) -> list[dict]:
+    """Structured cardio actions for a day (rower / elliptical / bike), or [] for lifting/rest days."""
+    return day.get("cardio", [])
+
+
+def cardio_load(day: dict) -> dict:
+    """{options, min_lo, min_hi} — number of cardio options and the min/max single-session minutes."""
+    c = day_cardio(day)
+    mins = [int(x.get("minutes", 0)) for x in c] or [0]
+    return {"options": len(c), "min_lo": min(mins), "min_hi": max(mins)}
 
 
 def day_muscles(day: dict):
