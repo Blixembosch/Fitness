@@ -509,7 +509,7 @@ def _exercise_box(i, e, color, day_key, date_iso):
                 f"<div class='chiprow'>{chips}</div>",
                 unsafe_allow_html=True,
             )
-        b1, b2, _ = st.columns([1.3, 1, 2])
+        b1, b2 = st.columns([2, 1])
         if b1.button("✓ Set", key=f"s_{key}", use_container_width=True, disabled=finished):
             S["setlog"][key] = min(total, done + 1)
             st.rerun()
@@ -548,9 +548,9 @@ def page_workout():
         unsafe_allow_html=True,
     )
     details = P.day_details(day)
-    for row in range(0, len(details), 2):
-        cols = st.columns(2, gap="medium")
-        for col, (i, e) in zip(cols, enumerate(details[row:row + 2], row + 1)):
+    for row in range(0, len(details), 3):
+        cols = st.columns(3, gap="medium")
+        for col, (i, e) in zip(cols, enumerate(details[row:row + 3], row + 1)):
             with col:
                 _exercise_box(i, e, color, day["key"], done_iso)
 
