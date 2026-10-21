@@ -843,27 +843,28 @@ def _exercise_box(i: int, e: dict, day_color: str, day_key: str, date_iso: str, 
     badge_content = "✓" if finished else str(i)
     badge_border = "var(--green)" if finished else f"color-mix(in srgb,{accent} 45%,transparent)"
 
+    tip_txt = e.get("tip", "")
+    sub_tip = f"<div class='muted' style='font-size:11.5px;margin-top:6px;line-height:1.45'>💡 {tip_txt}</div>" if tip_txt else ""
+
     with st.container(border=True):
         st.markdown(
-            f"<div style='display:flex;align-items:flex-start;gap:12px;min-height:78px;margin-bottom:6px'>"
-            f"<div style='display:flex;flex-direction:column;align-items:center;flex-shrink:0;width:38px'>"
+            f"<div style='display:flex;align-items:flex-start;gap:12px;margin-bottom:8px'>"
             f"<div style='width:36px;height:36px;border-radius:50%;background:{badge_bg};color:{badge_fg};"
             f"border:1.5px solid {badge_border};font-family:Nunito;font-weight:900;font-size:15px;"
-            f"display:flex;align-items:center;justify-content:center'>{badge_content}</div>"
-            f"<div style='font-family:Nunito;font-weight:800;font-size:11px;margin-top:3px;color:{ringcol};text-align:center'>{done}/{total}</div>"
-            f"</div>"
+            f"display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:2px'>{badge_content}</div>"
             f"<div style='flex:1;min-width:0'>"
             f"<div style='display:flex;justify-content:space-between;align-items:flex-start;gap:6px'>"
-            f"<div style='font-weight:800;font-size:14.5px;color:var(--fg);line-height:1.25;flex:1'>{title_txt}</div>"
-            f"<div style='font-family:Nunito;font-weight:800;color:{accent};font-size:14px;flex-shrink:0'>{meta_txt}</div>"
+            f"<div style='font-weight:800;font-size:14.5px;color:var(--fg);line-height:1.25'>{title_txt}</div>"
+            f"<div style='font-family:Nunito;font-weight:800;color:{accent};font-size:14.5px;flex-shrink:0'>{meta_txt}</div>"
             f"</div>"
-            f"<div class='chiprow' style='margin:4px 0 0'>{chips}{kg_badge}</div>"
+            f"<div class='chiprow' style='margin-top:4px'>{chips}{kg_badge}</div>"
+            f"{sub_tip}"
             f"</div></div>",
             unsafe_allow_html=True,
         )
-        b1, b2 = st.columns([2.2, 1])
-        btn_lbl = "✓ Tamamla" if is_cardio else "✓ Set"
-        if b1.button(btn_lbl, key=f"s_{key}", use_container_width=True, disabled=finished):
+        b1, b2 = st.columns([4, 1])
+        btn_lbl = "✓ Tamamlandı" if finished else ("✓ Tamamla (10 dk)" if is_cardio else f"+ Set Tamamla ({done+1}/{total})")
+        if b1.button(btn_lbl, key=f"s_{key}", use_container_width=True, disabled=finished, type="primary" if not finished else "secondary"):
             S["setlog"][key] = min(total, done + 1)
             if day_obj and all_steps:
                 lift_steps = [ex for ex in all_steps if ex.get("kind") == "lift"]
@@ -881,16 +882,6 @@ def _exercise_box(i: int, e: dict, day_color: str, day_key: str, date_iso: str, 
             S["setlog"][key] = 0
             _save()
             st.rerun()
-        with st.expander("Hangi kası çalıştırır?"):
-            st.markdown(f"<div class='muted' style='font-size:12.5px;margin:-4px 0 6px'>{data.tr_eq(e.get('eq',''))}</div>", unsafe_allow_html=True)
-            st.markdown(bodymap.body_map(e["primary"], e["secondary"]) + ui.legend(accent), unsafe_allow_html=True)
-            st.markdown(f"<div class='muted' style='font-size:12.5px;margin-top:8px'>💡 {e.get('tip','')}</div>", unsafe_allow_html=True)
-            if not is_cardio:
-                cur_kg = float(S.get("loadlog", {}).get(e["id"]) or 0.0)
-                new_kg = st.number_input("Çalışma ağırlığı (kg)", min_value=0.0, max_value=200.0, value=cur_kg, step=2.5, key=f"kg_{key}")
-                if new_kg != cur_kg:
-                    S.setdefault("loadlog", {})[e["id"]] = round(new_kg, 1)
-                    _save()
 
 
 def page_workout():
@@ -956,6 +947,21 @@ def page_workout():
         st.rerun()
 
     st.markdown("<div class='section-divider'><span>Ek Seçenekler & Egzersiz Rehberi</span></div>", unsafe_allow_html=True)
+
+    with st.expander("🔎 Günün hareketleri kas anatomisi rehberi & dambıl ağırlıkları"):
+        for ex in steps:
+            p = ex.get("primary", [])
+            s = ex.get("secondary", [])
+            is_c = ex.get("kind") == "cardio"
+            st.markdown(f"**{ex['name'].title()}** · {data.tr_bp(ex.get('bp',''))}", unsafe_allow_html=True)
+            if p or s:
+                st.markdown(bodymap.body_map(p, s) + ui.legend(color), unsafe_allow_html=True)
+            if not is_c:
+                cur_kg = float(S.get("loadlog", {}).get(ex["id"]) or 0.0)
+                new_kg = st.number_input(f"Ağırlık (kg) · {ex['name'].title()}", min_value=0.0, max_value=200.0, value=cur_kg, step=2.5, key=f"guide_kg_{ex['id']}")
+                if new_kg != cur_kg:
+                    S.setdefault("loadlog", {})[ex["id"]] = round(new_kg, 1)
+                    _save()
 
     cardio_day = next((d for d in P.DAYS if P.day_cardio(d)), None)
     if cardio_day:
