@@ -1,7 +1,8 @@
 """Fitness — our own Streamlit interface over the openGym exercise data.
-5 pages, Home centered. The training program is auto-generated for the user's profile
-(lib/program.py); Plan and Antrenman render it (no manual building). Phase 1: session data +
-Cronometer CSV + manual weight. Persistence (Google Sheets) + Apple Health sync come next."""
+5 pages, Home far-left in the nav. The training program is auto-generated for the user's profile
+(lib/program.py); Plan and Antrenman render it (no manual building). Cronometer CSV is the single
+data source: dailysummary = nutrition, biometrics = weight, exercises = cardio/padel/active energy
+(it already mirrors Apple Health). 2026-10-31 is the baseline date progress is measured from."""
 from __future__ import annotations
 import datetime as dt
 import json
@@ -24,9 +25,13 @@ PROTEIN_PER_KG = 1.8
 S.setdefault("weights", [{"date": "2026-10-12", "w": 101.1}, {"date": "2026-10-16", "w": 101.1}, {"date": "2026-10-19", "w": 100.5}])
 S.setdefault("workouts", [])          # [{date, key, name, muscles:(primary,secondary)}]
 S.setdefault("padel", [])             # [iso date]
-S.setdefault("cron_ex", [])           # Cronometer exercises.csv rows [{date,type,minutes,kcal}]
+S.setdefault("cron_ex", [])           # Cronometer exercises rows [{date,type,padel,minutes,kcal}]
+S.setdefault("active_kcal", {})       # {date: kcal} daily active energy from Cronometer exercises
 S.setdefault("setlog", {})            # "date|daykey|exid" -> completed set count
 S.setdefault("nutrition", None)       # DataFrame or None
+
+START_DATE = dt.date(2026, 10, 31)    # baseline: progress (weight, streak) is measured from here
+START_ISO = START_DATE.strftime("%Y-%m-%d")
 
 TODAY = dt.date.today()
 NOW = dt.datetime.now()
@@ -62,9 +67,34 @@ def _sheet_data():
         return [], [], 0, {}
 
 
+def cron_ex_df():
+    """Cronometer workout sessions as a DataFrame [date, type, padel, minutes, kcal]."""
+    cols = ["date", "type", "padel", "minutes", "kcal"]
+    return pd.DataFrame(S["cron_ex"]) if S["cron_ex"] else pd.DataFrame(columns=cols)
+
+
+def activity_daily():
+    """Merged daily activity: steps/distance from the Sheet, active-kcal + exercise-minutes from
+    Cronometer (its exercises export mirrors Apple Health). {date: {steps,active_kcal,exercise_min,distance_km}}."""
+    daily = {k: dict(v) for k, v in (_sheet_data()[3] or {}).items()}
+
+    def rec(d):
+        return daily.setdefault(d, {"steps": 0, "active_kcal": 0, "exercise_min": 0, "distance_km": 0.0})
+
+    cx = cron_ex_df()
+    if not cx.empty:
+        for d, m in cx.groupby("date")["minutes"].sum().items():
+            r = rec(d)
+            r["exercise_min"] = max(r.get("exercise_min", 0) or 0, round(float(m)))
+    for d, k in S["active_kcal"].items():
+        r = rec(d)
+        r["active_kcal"] = max(r.get("active_kcal", 0) or 0, int(k))
+    return daily
+
+
 def today_activity():
-    """Today's Apple-Health activity (steps/active kcal/exercise min/distance), or latest day."""
-    daily = _sheet_data()[3]
+    """Today's activity (steps/active kcal/exercise min/distance), or the latest logged day."""
+    daily = activity_daily()
     if not daily:
         return None
     iso = TODAY.strftime("%Y-%m-%d")
@@ -101,11 +131,59 @@ def workouts_week():
     return [w for w in S["workouts"] if w["date"] >= WEEK_ISO]
 
 
-def padel_week():
+def padel_dates_all():
+    """Every known padel date (manual + Sheet + Cronometer 'padel' flag)."""
     allp = set(S["padel"]) | set(_sheet_data()[1])
-    if S["cron_ex"]:
-        allp |= set(sheets.padel_dates(pd.DataFrame(S["cron_ex"])))
-    return [d for d in allp if d >= WEEK_ISO]
+    cx = cron_ex_df()
+    if not cx.empty and "padel" in cx:
+        allp |= set(cx[cx["padel"]]["date"])
+    return allp
+
+
+def padel_week():
+    return [d for d in padel_dates_all() if d >= WEEK_ISO]
+
+
+def baseline_weight():
+    """(kg, Timestamp) nearest the 2026-10-31 baseline: first weigh-in on/after it, else the last
+    one before it (provisional until the baseline date arrives)."""
+    df = weights_df()
+    if df.empty:
+        return (None, None)
+    after = df[df["date"] >= pd.Timestamp(START_DATE)]
+    row = after.iloc[0] if not after.empty else df.iloc[-1]
+    return (round(float(row["w"]), 1), row["date"])
+
+
+def progress_since_start():
+    """(delta_kg, started). started becomes True once a weigh-in on/after the baseline exists;
+    before that we're still counting down and delta is 0."""
+    base, _ = baseline_weight()
+    latest, ldate = latest_weight()
+    started = base is not None and ldate is not None and ldate >= pd.Timestamp(START_DATE)
+    delta = round(latest - base, 1) if (started and base is not None and latest is not None) else 0.0
+    return (delta, started)
+
+
+def cardio_summary(days: int):
+    """Cardio/padel/activity rollup over the last `days` of LOGGED sessions (anchored to the latest
+    logged date, since Cronometer imports are historical). None when there's nothing logged."""
+    cx = cron_ex_df()
+    if cx.empty:
+        return None
+    anchor = pd.to_datetime(cx["date"]).max()
+    start = (anchor - pd.Timedelta(days=days - 1)).strftime("%Y-%m-%d")
+    win = cx[cx["date"] >= start]
+    if win.empty:
+        return None
+    by_type = (win.groupby("type")
+               .agg(sessions=("type", "size"), minutes=("minutes", "sum"), kcal=("kcal", "sum"))
+               .reset_index().sort_values("minutes", ascending=False))
+    return {
+        "sessions": int(len(win)), "minutes": int(win["minutes"].sum()), "kcal": int(win["kcal"].sum()),
+        "by_type": by_type, "recent": win.sort_values("date", ascending=False).head(6),
+        "span": f"{pd.to_datetime(start).day} {MON[pd.to_datetime(start).month-1]}–{anchor.day} {MON[anchor.month-1]}",
+    }
 
 
 def navigate(page):
@@ -213,18 +291,22 @@ def page_home():
             unsafe_allow_html=True,
         )
 
-    # weight
+    # weight — headline is progress since the 2026-10-31 baseline (countdown until it starts)
     w, _ = latest_weight()
     if w is not None:
-        df = weights_df()
-        delta = df["w"].iloc[-1] - df["w"].iloc[0] if len(df) > 1 else 0
-        dcls = "good" if delta < 0 else "bad" if delta > 0 else ""
+        delta, started = progress_since_start()
+        if started:
+            dcls = "good" if delta < 0 else "bad" if delta > 0 else ""
+            note = f"<span class='{dcls}' style='margin-inline-start:auto;font-weight:700;font-size:13px'>{'↓' if delta<0 else '↑' if delta>0 else '–'} {abs(delta):.1f} kg başlangıçtan beri</span>"
+        else:
+            days_to = (START_DATE - TODAY).days
+            txt = "başlangıç bugün" if days_to <= 0 else f"başlangıca {days_to} gün"
+            note = f"<span style='margin-inline-start:auto;color:var(--faint);font-weight:700;font-size:13px'>{txt}</span>"
         st.markdown(
             f"<div class='fcard'><div class='eyebrow'>Vücut ağırlığı</div>"
             f"<div style='display:flex;align-items:flex-end;gap:10px'>"
             f"<span style='font-family:Nunito;font-weight:900;font-size:36px;line-height:.95'>{w:.1f}</span>"
-            f"<span style='color:var(--faint);font-weight:700'>kg</span>"
-            f"<span class='{dcls}' style='margin-inline-start:auto;font-weight:700;font-size:13px'>{'↓' if delta<0 else '↑' if delta>0 else '–'} {abs(delta):.1f} kg bu hafta</span>"
+            f"<span style='color:var(--faint);font-weight:700'>kg</span>{note}"
             f"</div></div>",
             unsafe_allow_html=True,
         )
@@ -407,7 +489,9 @@ def page_stats():
         ui.tile("Antrenman", str(len(wk)), f"{days} günde"),
         ui.tile("Protein ort.", f"{avg_prot}<small> g</small>", f"{met}/{len(recent)} gün hedefte" if not recent.empty else "veri yok", "good" if met else ""),
         ui.tile("Kalori ort.", (f"{avg_kcal}" if avg_kcal else "–"), "son kayıtlar", ""),
-        ui.tile("Kilo", f"{wdelta:+.1f}", "kg", "good" if wdelta < 0 else "bad" if wdelta > 0 else ""),
+        (lambda pd_, st_: ui.tile("Kilo", f"{pd_:+.1f}" if st_ else (f"{weight_kg:.1f}" if weight_kg else "–"),
+                                  "kg · başlangıçtan" if st_ else "kg · başlangıç 31 Eki",
+                                  "good" if (st_ and pd_ < 0) else "bad" if (st_ and pd_ > 0) else ""))(*progress_since_start()),
     ])
     st.markdown(f"<div class='tiles'>{tiles}</div>", unsafe_allow_html=True)
 
@@ -473,6 +557,37 @@ def page_stats():
         st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
         st.caption("Çizgi: 7 günlük hareketli ortalama (günlük dalgalanmayı yumuşatır).")
 
+    # ---- cardio & activity (from Cronometer exercises — padel, bike, rowing…) ----
+    cs = cardio_summary(days)
+    if cs:
+        st.markdown(f"<div class='eyebrow' style='margin-top:16px'>Kardiyo & aktivite · {cs['span']}</div>", unsafe_allow_html=True)
+        ctiles = "".join([
+            ui.tile("Seans", str(cs["sessions"]), "kardiyo + padel"),
+            ui.tile("Süre", f"{cs['minutes']}<small> dk</small>", f"~{round(cs['minutes']/max(cs['sessions'],1))} dk/seans"),
+            ui.tile("Yakılan", f"{cs['kcal']}<small> kcal</small>", "tahmini"),
+        ])
+        st.markdown(f"<div class='tiles'>{ctiles}</div>", unsafe_allow_html=True)
+        bt = cs["by_type"]
+        mx = float(bt["minutes"].max()) or 1.0
+        COLZ = {"Padel": "var(--teal)", "Bisiklet": "var(--blue)", "Eliptik": "var(--purple)",
+                "Kürek": "var(--orange)", "Kardiyo": "var(--green)"}
+        bars = "".join(
+            ui.bar(r["type"], f"{int(r['minutes'])} dk · {int(r['sessions'])}×", r["minutes"] / mx * 100,
+                   COLZ.get(r["type"], "var(--blue)"))
+            for _, r in bt.iterrows()
+        )
+        st.markdown(f"<div class='fcard'><div class='eyebrow'>Türe göre süre</div><div class='bars'>{bars}</div></div>", unsafe_allow_html=True)
+        with st.expander("Son seanslar"):
+            for _, r in cs["recent"].iterrows():
+                d = pd.to_datetime(r["date"])
+                st.markdown(
+                    f"<div style='display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid var(--line)'>"
+                    f"<span style='font-family:Nunito;font-weight:800;font-size:13px;width:52px;color:var(--faint)'>{d.day} {MON[d.month-1]}</span>"
+                    f"<span style='flex:1;font-weight:700;font-size:13.5px'>{r['type']}</span>"
+                    f"<span style='color:var(--muted);font-size:12.5px'>{int(r['minutes'])} dk · {int(r['kcal'])} kcal</span></div>",
+                    unsafe_allow_html=True,
+                )
+
     with st.expander("Haftalık hacim (kas grubu)"):
         vol: dict[str, int] = {}
         for d in P.TRAINING_DAYS:
@@ -536,7 +651,9 @@ def page_nutrition():
                 elif kind == "exercises":
                     ex = cronometer.parse_exercises(raw)
                     S["cron_ex"] = ex.to_dict("records")
-                    msgs.append(f"spor {len(ex)} kayıt")
+                    S["active_kcal"] = {r["date"]: r["kcal"] for r in cronometer.parse_active_energy(raw)}
+                    npad = int(ex["padel"].sum()) if not ex.empty and "padel" in ex else 0
+                    msgs.append(f"spor {len(ex)} seans ({npad} padel)")
                 else:
                     msgs.append(f"{f.name}: tanınmadı")
             except Exception:  # noqa: BLE001
@@ -585,14 +702,19 @@ def page_nutrition():
         st.success("Kaydedildi (bu oturumda).")
         st.rerun()
 
+    cx = cron_ex_df()
+    if not cx.empty or S["nutrition"] is not None or S["weights"]:
+        nd = len(S["nutrition"]) if S["nutrition"] is not None else 0
+        npad = int(cx["padel"].sum()) if not cx.empty and "padel" in cx else 0
+        st.caption(f"📄 Cronometer: {nd} gün beslenme · {len(S['weights'])} kilo · {len(cx)} seans ({npad} padel) · {len(S['active_kcal'])} gün aktif enerji")
+    else:
+        st.caption("📄 Cronometer'dan dışa aktardığın dosyaları yukarıdan yükle — tek kaynak.")
     sw, spd, swo, sdaily = _sheet_data()
     if sw or spd or swo or sdaily:
-        st.caption(f"🔗 Google Sheet senkron: {len(sw)} kilo · {len(spd)} padel · {swo} workout · {len(sdaily)} günlük aktivite")
-    else:
-        st.caption("🔗 Google Sheet henüz boş/bağlı değil. Apple Health otomasyonu kurulunca veriler buraya düşecek.")
-    if st.button("🔄 Şimdi senkronla", use_container_width=True):
-        _sheet.clear()
-        st.rerun()
+        st.caption(f"🔗 Google Sheet (opsiyonel): {len(sw)} kilo · {len(spd)} padel · {swo} workout · {len(sdaily)} günlük")
+        if st.button("🔄 Sheet'i yenile", use_container_width=True):
+            _sheet.clear()
+            st.rerun()
 
     t = S["targets"]
     wkg = latest_weight()[0] or 100.0
@@ -617,18 +739,19 @@ def page_nutrition():
         st.caption("Protein 1,8 g/kg'de sabit (kas koruma); kilo değiştikçe hedefler otomatik güncellenir. Genel bilgilendirme, tıbbi tavsiye değil.")
 
 
-# ---------------- nav (top) + routing ----------------
-NAV = [("plan", "🗓"), ("workout", "🏋️"), ("home", "🏠"), ("stats", "📊"), ("nutrition", "🔥")]
-LABEL = {"plan": "Plan", "workout": "Antrenman", "home": "Ana Sayfa", "stats": "İstatistik", "nutrition": "Beslenme"}
+# ---------------- nav (bottom bar) + routing ----------------
+# Home sits far-left; the rest follow in flow order.
+NAV = [("home", "🏠"), ("plan", "🗓"), ("workout", "🏋️"), ("stats", "📊"), ("nutrition", "🔥")]
+LABEL = {"home": "Ana Sayfa", "plan": "Plan", "workout": "Antrenman", "stats": "İstatistik", "nutrition": "Beslenme"}
 PAGES = {"home": page_home, "plan": page_plan, "workout": page_workout, "stats": page_stats, "nutrition": page_nutrition}
 
-cols = st.columns([1, 1, 1.25, 1, 1])
+cols = st.columns(5)
 for col, (key, icon) in zip(cols, NAV):
     with col:
         st.button(icon, key=f"nav_{key}", use_container_width=True,
                   type="primary" if S["page"] == key else "secondary",
                   on_click=navigate, args=(key,))
-st.markdown(f"<div style='text-align:center;color:var(--faint);font-size:11px;margin:1px 0 10px'>{LABEL[S['page']]}</div>", unsafe_allow_html=True)
+st.markdown(f"<div style='color:var(--faint);font-size:11px;margin:1px 0 10px;padding-inline-start:2px'>{LABEL[S['page']]}</div>", unsafe_allow_html=True)
 
 PAGES[S["page"]]()
 st.caption("Tasarım önizlemesi · program sana özel · veriler şimdilik oturum içinde")
