@@ -36,6 +36,35 @@ def bmi(weight_kg: float, height_cm: float):
     return round(weight_kg / (height_cm / 100) ** 2, 1) if height_cm else None
 
 
+def adjusted_weight(weight_kg: float, height_cm: float) -> float:
+    """Adjusted body weight for protein calculation when BMI > 25 (Helms / Examine GLP-1 guidance).
+    Prevents over-prescribing protein on raw fat mass while fully protecting lean mass."""
+    if not height_cm or not weight_kg:
+        return float(weight_kg or 100.0)
+    ref_w = 25.0 * (height_cm / 100.0) ** 2
+    if weight_kg <= ref_w:
+        return round(float(weight_kg), 1)
+    return round(ref_w + 0.40 * (weight_kg - ref_w), 1)
+
+
+def protein_band(weight_kg: float, height_cm: float, mode: str = "adjusted") -> dict:
+    """Return {'target': int, 'min': int, 'max': int, 'eff_weight': float, 'mode': str}.
+    - 'adjusted' (default for Wegovy): uses adjusted body weight (~160 g target, 150–181 g band at 100.5 kg / 178 cm).
+    - 'strict': uses raw total weight × 1.8 g/kg (~181 g target, 161–201 g band).
+    """
+    w = float(weight_kg or 100.0)
+    adj = adjusted_weight(w, height_cm or 178)
+    if mode == "strict":
+        tgt = round(w * 1.8)
+        lo = round(w * 1.6)
+        hi = round(w * 2.0)
+        return {"target": tgt, "min": lo, "max": hi, "eff_weight": round(w, 1), "mode": "strict"}
+    lo = max(120, round(adj * 1.7 / 5) * 5)
+    tgt = max(lo, round(adj * 1.85 / 5) * 5)
+    hi = max(tgt, round(w * 1.8))
+    return {"target": tgt, "min": lo, "max": hi, "eff_weight": adj, "mode": "adjusted"}
+
+
 # --- Cronometer dailysummary.csv -> tidy frame [date, kcal, protein, carbs, fat, fiber] ---
 _COLS = {
     "kcal": ["energy (kcal)", "energy", "calories", "kcal"],

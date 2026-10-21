@@ -10,7 +10,10 @@ from lib import metrics
 
 
 def rule_based(m: dict) -> str:
-    gkg, loss, sets, deficit = m.get("gkg"), m.get("loss"), m.get("avg_sets"), m.get("deficit")
+    gkg = m.get("gkg")
+    loss = m.get("loss") if m.get("loss") is not None else m.get("loss_pct_week")
+    sets = m.get("avg_sets") if m.get("avg_sets") is not None else m.get("avg_sets_per_muscle")
+    deficit = m.get("deficit") if m.get("deficit") is not None else m.get("deficit_kcal")
     tgt = m.get("protein_target")
     msgs = []
     if gkg is not None and gkg < metrics.PROTEIN_GKG[0]:
