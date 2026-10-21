@@ -34,3 +34,19 @@ def test_day_muscles_nonempty_for_training_day():
 def test_rest_day_has_no_exercises():
     rest = P.DAYS[6]
     assert rest["focus"] == "rest" and rest["exercises"] == []
+
+
+def test_cardio_day_has_actions():
+    from lib import program as P
+    cardio = next((d for d in P.DAYS if P.day_cardio(d)), None)
+    assert cardio is not None, "there should be a day with structured cardio actions"
+    types = {c["type"] for c in P.day_cardio(cardio)}
+    assert {"Kürek", "Eliptik", "Bisiklet"} <= types
+    load = P.cardio_load(cardio)
+    assert load["options"] >= 3 and load["min_lo"] > 0 and load["min_hi"] >= load["min_lo"]
+
+
+def test_lifting_days_have_no_cardio():
+    from lib import program as P
+    for d in P.TRAINING_DAYS:
+        assert P.day_cardio(d) == []
