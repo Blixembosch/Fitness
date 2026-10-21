@@ -678,12 +678,18 @@ def page_home():
         )
 
 
-def _plan_step_box(i: int, e: dict, day_color: str) -> str:
-    """Unified numbered Plan card (1..N) for both cardio steps (Eliptik / Kürek) and strength lifts."""
+def _plan_step_box(i: int, e: dict, day_color: str, is_done: bool = False) -> str:
+    """Unified numbered Plan/Workout card (1..N) for both cardio steps (Eliptik / Kürek) and strength lifts."""
     is_cardio = e.get("kind") == "cardio"
-    badge_col = "var(--orange)" if e.get("type") == "Kürek" else ("var(--green)" if is_cardio else day_color)
+    accent = "var(--orange)" if e.get("type") == "Kürek" else ("var(--green)" if is_cardio else day_color)
+    badge_col = "var(--green)" if is_done else accent
+    badge_bg = "var(--green)" if is_done else f"color-mix(in srgb,{accent} 22%,var(--surface-2))"
+    badge_fg = "#ffffff" if is_done else accent
+    badge_content = "✓" if is_done else str(i)
+    badge_border = "var(--green)" if is_done else f"color-mix(in srgb,{accent} 45%,transparent)"
+
     role_chip = (
-        f"<span class='chip' style='font-size:10.5px;padding:2px 8px;color:{badge_col}'>"
+        f"<span class='chip' style='font-size:10.5px;padding:2px 8px;color:{accent}'>"
         f"{P.CARDIO_ICON.get(e.get('type'), '🔥')} {e.get('role', 'Kardiyo')}</span>"
         if is_cardio else ""
     )
@@ -694,10 +700,11 @@ def _plan_step_box(i: int, e: dict, day_color: str) -> str:
     right_lbl = e["reps"] if is_cardio else f"{e['sets']}×{e['reps']}"
     title_txt = e["name"] if is_cardio else e["name"].title()
     sub_tip = f"<div class='muted' style='font-size:11.5px;margin-top:4px;line-height:1.4'>{e.get('tip','')}</div>" if is_cardio else ""
+    border_style = "border-color:color-mix(in srgb,var(--green) 45%,var(--line));" if is_done else ""
     return (
-        f"<div class='exrow' style='align-items:flex-start'>"
-        f"<div style='width:34px;height:34px;border-radius:50%;background:color-mix(in srgb,{badge_col} 22%,var(--surface-2));color:{badge_col};"
-        f"font-family:Nunito;font-weight:900;font-size:14px;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:2px'>{i}</div>"
+        f"<div class='exrow' style='align-items:flex-start;{border_style}'>"
+        f"<div style='width:34px;height:34px;border-radius:50%;background:{badge_bg};color:{badge_fg};border:1.5px solid {badge_border};"
+        f"font-family:Nunito;font-weight:900;font-size:14px;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:2px'>{badge_content}</div>"
         f"<div style='flex:1;min-width:0'><div style='font-weight:800;font-size:14.5px;color:var(--fg)'>{title_txt}</div>"
         f"<div class='chiprow' style='margin-top:4px'>{chips}</div>{sub_tip}</div>"
         f"<div style='font-family:Nunito;font-weight:800;color:{badge_col};font-size:15px;flex-shrink:0'>{right_lbl}</div></div>"
@@ -813,77 +820,6 @@ def page_plan():
         )
 
 
-def _exercise_box(i: int, e: dict, day_color: str, day_key: str, date_iso: str, day_obj=None, all_steps=None):
-    """Unified 3-column workout card for BOTH cardio steps (1. Eliptik, Kürek, Eliptik finisher)
-    and strength exercises. All share identical card height, numbering, progress ring, and muscle map."""
-    key = f"{date_iso}|{day_key}|{e['id']}"
-    is_cardio = e.get("kind") == "cardio"
-    total = int(e["sets"])
-    done = S["setlog"].get(key, 0)
-    finished = done >= total
-    accent = "var(--orange)" if e.get("type") == "Kürek" else ("var(--green)" if is_cardio else day_color)
-    ringcol = "var(--green)" if finished else accent
-
-    role_chip = (
-        f"<span class='chip' style='font-size:10.5px;padding:2px 8px;color:{accent}'>"
-        f"{P.CARDIO_ICON.get(e.get('type'), '🔥')} {e.get('role', 'Kardiyo')}</span>"
-        if is_cardio else ""
-    )
-    chips = role_chip + "".join(
-        f"<span class='chip' style='font-size:10.5px;padding:3px 8px'>{data.tr_muscle(m)}</span>"
-        for m in e.get("primary", [])[:2]
-    )
-    last_kg = S.get("loadlog", {}).get(e["id"]) if not is_cardio else None
-    kg_badge = f"<span class='chip' style='font-size:10.5px;padding:2px 7px;color:var(--fg)'>⚖️ {last_kg:g} kg</span>" if last_kg else ""
-    meta_txt = e["reps"] if is_cardio else f"{e['sets']}×{e['reps']}"
-    title_txt = e["name"] if is_cardio else e["name"].title()
-
-    badge_bg = "var(--green)" if finished else f"color-mix(in srgb,{accent} 22%,var(--surface-2))"
-    badge_fg = "#ffffff" if finished else accent
-    badge_content = "✓" if finished else str(i)
-    badge_border = "var(--green)" if finished else f"color-mix(in srgb,{accent} 45%,transparent)"
-
-    tip_txt = e.get("tip", "")
-    sub_tip = f"<div class='muted' style='font-size:11.5px;margin-top:6px;line-height:1.45'>💡 {tip_txt}</div>" if tip_txt else ""
-
-    with st.container(border=True):
-        st.markdown(
-            f"<div style='display:flex;align-items:flex-start;gap:12px;margin-bottom:8px'>"
-            f"<div style='width:36px;height:36px;border-radius:50%;background:{badge_bg};color:{badge_fg};"
-            f"border:1.5px solid {badge_border};font-family:Nunito;font-weight:900;font-size:15px;"
-            f"display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:2px'>{badge_content}</div>"
-            f"<div style='flex:1;min-width:0'>"
-            f"<div style='display:flex;justify-content:space-between;align-items:flex-start;gap:6px'>"
-            f"<div style='font-weight:800;font-size:14.5px;color:var(--fg);line-height:1.25'>{title_txt}</div>"
-            f"<div style='font-family:Nunito;font-weight:800;color:{accent};font-size:14.5px;flex-shrink:0'>{meta_txt}</div>"
-            f"</div>"
-            f"<div class='chiprow' style='margin-top:4px'>{chips}{kg_badge}</div>"
-            f"{sub_tip}"
-            f"</div></div>",
-            unsafe_allow_html=True,
-        )
-        b1, b2 = st.columns([4.2, 1])
-        btn_lbl = "✓ Tamamlandı" if finished else ("✓ Tamamla" if is_cardio else f"+ Set ({done+1}/{total})")
-        if b1.button(btn_lbl, key=f"s_{key}", use_container_width=True, disabled=finished):
-            S["setlog"][key] = min(total, done + 1)
-            if day_obj and all_steps:
-                lift_steps = [ex for ex in all_steps if ex.get("kind") == "lift"]
-                all_done = all(
-                    S["setlog"].get(f"{date_iso}|{day_key}|{ex['id']}", 0) >= int(ex["sets"])
-                    for ex in lift_steps
-                )
-                already = any(w["date"] == date_iso and w.get("key") == day_key for w in S["workouts"])
-                if all_done and not already:
-                    prim, sec = P.day_muscles(day_obj)
-                    S["workouts"].append({"date": date_iso, "key": day_key, "name": day_obj["name"], "primary": prim, "secondary": sec})
-            _save()
-            st.rerun()
-        if b2.button("↺", key=f"r_{key}", use_container_width=True, disabled=done == 0):
-            S["setlog"][key] = 0
-            _save()
-            st.rerun()
-
-
 def page_workout():
     st.markdown("<h1 style='margin:0 0 10px'>Antrenman</h1>", unsafe_allow_html=True)
     training = P.TRAINING_DAYS
@@ -906,9 +842,9 @@ def page_workout():
     ws = wegovy_status()
     weg_note = f" · 💉 Wegovy ({ws['dose_mg']:g} mg) 48s esnek RPE" if ws["in_48h"] else ""
     done_iso = TODAY.strftime("%Y-%m-%d")
-    total_units = sum(int(e["sets"]) for e in steps)
-    done_units = sum(S["setlog"].get(f"{done_iso}|{day['key']}|{e['id']}", 0) for e in steps)
-    done_pct = round(done_units / total_units * 100) if total_units else 0
+
+    already = any(w["date"] == done_iso and w.get("key") == day["key"] for w in S["workouts"])
+    status_tag = " · <span style='color:var(--green);font-weight:700'>Tamamlandı ✓</span>" if already else ""
 
     chips = "".join(f"<span class='chip'>{g}</span>" for g in P.day_groups(day))
     chips += "<span class='chip' style='color:var(--green)'>🏃 Eliptik 5+10 dk</span>"
@@ -919,28 +855,40 @@ def page_workout():
         f"<div class='kick' style='color:{color}'>● {day['tag']} · RPE {phase['rpe']}{weg_note}</div>"
         f"<h2>{day['name']}</h2>"
         f"<div class='chiprow'>{chips}</div>"
-        f"<div class='muted' style='font-size:13px;margin-top:8px'>{len(steps)} numaralı adım ({load['exercises']} güç + Eliptik ısınma + Kürek & Eliptik yağ yakım) · {load['sets']} güç seti + 25 dk kardiyo · <span style='color:var(--fg);font-weight:700'>{done_units}/{total_units} adım tamam</span></div>"
+        f"<div class='muted' style='font-size:13px;margin-top:8px'>{len(steps)} numaralı adım ({load['exercises']} güç + Eliptik ısınma + Kürek & Eliptik yağ yakım) · ~{load['minutes']+25} dk{status_tag}</div>"
         f"</div>",
         unsafe_allow_html=True,
     )
-    # Render all numbered steps (1..N: Eliptik warm-up -> Lifts -> Rower -> Eliptik finisher) in a cohesive 3-col grid
-    for row in range(0, len(steps), 3):
-        cols = st.columns(3, gap="medium")
-        for col, (i, e) in zip(cols, enumerate(steps[row:row + 3], row + 1)):
-            with col:
-                _exercise_box(i, e, color, day["key"], done_iso, day_obj=day, all_steps=steps)
 
-    already = any(w["date"] == done_iso and w.get("key") == day["key"] for w in S["workouts"])
+    # Render all numbered steps (1..N) matching Plan page layout 1:1 using .exgrid
+    boxes = "".join(
+        _plan_step_box(
+            i, e, color,
+            is_done=already or (S["setlog"].get(f"{done_iso}|{day['key']}|{e['id']}", 0) >= int(e["sets"])),
+        )
+        for i, e in enumerate(steps, 1)
+    )
+    st.markdown(f"<div class='exgrid'>{boxes}</div>", unsafe_allow_html=True)
+
+    st.markdown("<div style='height:14px'></div>", unsafe_allow_html=True)
     if already:
-        st.success("Bugün bu antrenman tamamlandı ✓")
-    elif st.button("✅ Tüm antrenmanı tamamla", use_container_width=True):
-        prim, sec = P.day_muscles(day)
-        for ex in steps:
-            S["setlog"][f"{done_iso}|{day['key']}|{ex['id']}"] = int(ex["sets"])
-        S["workouts"].append({"date": done_iso, "key": day["key"], "name": day["name"], "primary": prim, "secondary": sec})
-        _save()
-        st.success(f"{day['name']} kalıcı olarak kaydedildi ✓")
-        st.rerun()
+        c1, c2 = st.columns([4, 1])
+        c1.success(f"{day['name']} antrenmanı tamamlandı ✓")
+        if c2.button("↺ Geri al", use_container_width=True):
+            S["workouts"] = [w for w in S["workouts"] if not (w["date"] == done_iso and w.get("key") == day["key"])]
+            for ex in steps:
+                S["setlog"].pop(f"{done_iso}|{day['key']}|{ex['id']}", None)
+            _save()
+            st.rerun()
+    else:
+        if st.button("✅ Tüm antrenmanı tamamla", use_container_width=True):
+            prim, sec = P.day_muscles(day)
+            for ex in steps:
+                S["setlog"][f"{done_iso}|{day['key']}|{ex['id']}"] = int(ex["sets"])
+            S["workouts"].append({"date": done_iso, "key": day["key"], "name": day["name"], "primary": prim, "secondary": sec})
+            _save()
+            st.success(f"{day['name']} kalıcı olarak kaydedildi ✓")
+            st.rerun()
 
     st.markdown("<div class='section-divider'><span>Ek Seçenekler & Egzersiz Rehberi</span></div>", unsafe_allow_html=True)
 
