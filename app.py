@@ -9,7 +9,7 @@ import pandas as pd
 import streamlit as st
 import plotly.graph_objects as go
 
-from lib import data, nutrition, bodymap, ui, program as P, metrics, insight, sheets
+from lib import data, nutrition, bodymap, ui, program as P, metrics, insight, sheets, cronometer
 
 st.set_page_config(page_title="Fitness", page_icon="💪", layout="centered", initial_sidebar_state="collapsed")
 ui.inject()
@@ -24,6 +24,7 @@ PROTEIN_PER_KG = 1.8
 S.setdefault("weights", [{"date": "2026-10-12", "w": 101.1}, {"date": "2026-10-16", "w": 101.1}, {"date": "2026-10-19", "w": 100.5}])
 S.setdefault("workouts", [])          # [{date, key, name, muscles:(primary,secondary)}]
 S.setdefault("padel", [])             # [iso date]
+S.setdefault("cron_ex", [])           # Cronometer exercises.csv rows [{date,type,minutes,kcal}]
 S.setdefault("setlog", {})            # "date|daykey|exid" -> completed set count
 S.setdefault("nutrition", None)       # DataFrame or None
 
@@ -102,6 +103,8 @@ def workouts_week():
 
 def padel_week():
     allp = set(S["padel"]) | set(_sheet_data()[1])
+    if S["cron_ex"]:
+        allp |= set(sheets.padel_dates(pd.DataFrame(S["cron_ex"])))
     return [d for d in allp if d >= WEEK_ISO]
 
 
@@ -511,13 +514,35 @@ def page_stats():
 
 def page_nutrition():
     st.markdown("<h1 style='margin:0 0 10px'>Beslenme</h1>", unsafe_allow_html=True)
-    up = st.file_uploader("Cronometer dailysummary.csv yükle", type="csv")
-    if up is not None:
-        try:
-            S["nutrition"] = nutrition.parse_cronometer(up)
-            st.success(f"{len(S['nutrition'])} gün yüklendi.")
-        except Exception as e:  # noqa: BLE001
-            st.error(f"Okunamadı: {e}")
+    ups = st.file_uploader("Cronometer CSV yükle (dailysummary · biometrics · exercises)",
+                           type="csv", accept_multiple_files=True)
+    if ups:
+        msgs = []
+        for f in ups:
+            raw = f.getvalue()
+            head = raw[:600].decode("utf-8-sig", "replace")
+            kind = cronometer.detect(head)
+            try:
+                if kind == "nutrition":
+                    S["nutrition"] = nutrition.parse_cronometer(raw)
+                    msgs.append(f"beslenme {len(S['nutrition'])} gün")
+                elif kind == "biometrics":
+                    bw = cronometer.parse_biometrics(raw)
+                    rows = {x["date"]: x["w"] for x in S["weights"]}
+                    for x in bw:
+                        rows[x["date"]] = x["w"]
+                    S["weights"] = [{"date": k, "w": v} for k, v in rows.items()]
+                    msgs.append(f"kilo {len(bw)} ölçüm")
+                elif kind == "exercises":
+                    ex = cronometer.parse_exercises(raw)
+                    S["cron_ex"] = ex.to_dict("records")
+                    msgs.append(f"spor {len(ex)} kayıt")
+                else:
+                    msgs.append(f"{f.name}: tanınmadı")
+            except Exception:  # noqa: BLE001
+                msgs.append(f"{f.name}: okunamadı")
+        st.success("Yüklendi → " + " · ".join(msgs))
+        st.rerun()
 
     nt = nutrition_today()
     t = S["targets"]
