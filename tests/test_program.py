@@ -50,3 +50,36 @@ def test_lifting_days_have_no_cardio():
     from lib import program as P
     for d in P.TRAINING_DAYS:
         assert P.day_cardio(d) == []
+
+
+def test_phase_for_12_weeks():
+    from lib import program as P
+    assert P.phase_for(0)["key"] == "temel"      # not started -> phase 1 preview
+    assert P.phase_for(1)["key"] == "temel"
+    assert P.phase_for(4)["key"] == "temel"
+    assert P.phase_for(5)["key"] == "gelisim"
+    assert P.phase_for(8)["key"] == "gelisim"
+    assert P.phase_for(9)["key"] == "koruma"
+    assert P.phase_for(12)["key"] == "koruma"
+    assert P.phase_for(99)["key"] == "koruma"    # clamps to last phase
+
+
+def test_phase_extra_sets_and_volume():
+    from lib import program as P
+    assert P.phase_extra_sets(P.phase_for(1)) == 0     # base 3 sets
+    assert P.phase_extra_sets(P.phase_for(6)) == 1     # build adds a set
+    d = P.TRAINING_DAYS[0]
+    base = P.day_load(d, 0)["sets"]
+    assert P.day_load(d, 1)["sets"] == base + len(d["exercises"])
+    # per-exercise sets reflect the phase
+    assert P.day_details(d, 1)[0]["sets"] == P.day_details(d, 0)[0]["sets"] + 1
+
+
+def test_lifting_finisher_elliptical_every_lift_day():
+    from lib import program as P
+    for d in P.TRAINING_DAYS:
+        fin = P.lifting_finisher(d, 10)
+        assert fin and fin["type"] == "Eliptik" and fin["minutes"] == 10
+    # non-lifting days get no finisher
+    rest = next(d for d in P.DAYS if d["focus"] == "rest")
+    assert P.lifting_finisher(rest, 10) is None
