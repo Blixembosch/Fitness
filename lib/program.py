@@ -144,6 +144,61 @@ def day_details(day: dict, extra_sets: int = 0) -> list[dict]:
     return [exercise_detail(e, extra_sets) for e in day["exercises"]]
 
 
+def workout_steps(day: dict, extra_sets: int = 0) -> list[dict]:
+    """Full numbered workout sequence (1..N) for a lifting day:
+    1) Eliptik warm-up (5 min)
+    2..K+1) Strength exercises (muscle preservation & growth)
+    K+2) Kürek / Water Rower (10 min metabolic fat-burn & back/posterior chain conditioning)
+    K+3) Eliptik Zone-2 finisher (10 min fat oxidation & joint-friendly cooldown)
+    """
+    if not day.get("exercises"):
+        return []
+    warm = {
+        "id": "cardio_warmup_eliptik",
+        "kind": "cardio",
+        "type": "Eliptik",
+        "role": "Isınma",
+        "name": "Eliptik — Isınma",
+        "sets": 1,
+        "reps": "5 dk",
+        "minutes": 5,
+        "eq": "Eliptik",
+        "primary": ["quads", "glutes"],
+        "secondary": ["calves", "hamstrings"],
+        "tip": "Antrenman ÖNCESİ 5 dk kolay tempo — eklem, nabız ve dolaşım hazırlığı; kasları yormadan ağırlığa hazırlar.",
+    }
+    lifts = [{**e, "kind": "lift"} for e in day_details(day, extra_sets)]
+    rower = {
+        "id": "cardio_rower_fatburn",
+        "kind": "cardio",
+        "type": "Kürek",
+        "role": "Yağ Yakım",
+        "name": "Kürek (Rower) — Yağ Yakım",
+        "sets": 1,
+        "reps": "10 dk",
+        "minutes": 10,
+        "eq": "Su Küreği (Rower)",
+        "primary": ["lats", "upper back", "quads"],
+        "secondary": ["glutes", "biceps", "abs"],
+        "tip": "Ağırlık SONRASI 10 dk orta-canlı tempo (1 dk güçlü çekiş / 1 dk akıcı). Glikojen azalmışken tam-vücut (sırt + bacak + core) yağ yakımı ve sırt kası aktivasyonu sağlar.",
+    }
+    eliptik_fin = {
+        "id": "cardio_finisher_eliptik",
+        "kind": "cardio",
+        "type": "Eliptik",
+        "role": "Bitiriş",
+        "name": "Eliptik — Yağ Yakım & Toparlanma",
+        "sets": 1,
+        "reps": "10 dk",
+        "minutes": 10,
+        "eq": "Eliptik",
+        "primary": ["quads", "glutes"],
+        "secondary": ["hamstrings", "calves"],
+        "tip": "Antrenman SONUNDA 10 dk Zone-2 sabit tempo — düşük eklem yüküyle ekstra yağ oksidasyonu ve aktif toparlanma sağlar.",
+    }
+    return [warm, *lifts, rower, eliptik_fin]
+
+
 _GROUP_ORDER = ["Göğüs", "Sırt", "Omuz", "Kol", "Bacak", "Baldır", "Karın"]
 
 
