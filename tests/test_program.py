@@ -75,14 +75,27 @@ def test_phase_extra_sets_and_volume():
     assert P.day_details(d, 1)[0]["sets"] == P.day_details(d, 0)[0]["sets"] + 1
 
 
-def test_lifting_finisher_elliptical_every_lift_day():
+def test_warmup_elliptical_every_lift_day():
     from lib import program as P
     for d in P.TRAINING_DAYS:
-        fin = P.lifting_finisher(d, 10)
-        assert fin and fin["type"] == "Eliptik" and fin["minutes"] == 10
-    # non-lifting days get no finisher
+        w = P.lifting_warmup(d)
+        assert w and w["type"] == "Eliptik" and w["minutes"] == 5
     rest = next(d for d in P.DAYS if d["focus"] == "rest")
-    assert P.lifting_finisher(rest, 10) is None
+    assert P.lifting_warmup(rest) is None
+
+
+def test_finisher_by_function():
+    from lib import program as P
+    # bike finisher after upper days (spares the trained upper body), elliptical after the leg day
+    for d in P.TRAINING_DAYS:
+        fin = P.lifting_finisher(d)
+        assert fin and fin["minutes"] == 10
+        if d["focus"] == "upper":
+            assert fin["type"] == "Bisiklet"
+        elif d["focus"] == "lower":
+            assert fin["type"] == "Eliptik"
+    rest = next(d for d in P.DAYS if d["focus"] == "rest")
+    assert P.lifting_finisher(rest) is None
 
 
 def test_reps_are_net_values():
@@ -93,8 +106,9 @@ def test_reps_are_net_values():
             assert str(e["reps"]) in allowed, f"{e['id']} has non-net reps {e['reps']!r}"
 
 
-def test_finisher_offers_elliptical_or_rower():
+def test_cardio_machines_have_distinct_roles():
     from lib import program as P
-    fin = P.lifting_finisher(P.TRAINING_DAYS[0], 12)
-    assert "kürek" in fin["name"].lower() and "eliptik" in fin["name"].lower()
-    assert fin["minutes"] == 12
+    cardio = next(d for d in P.DAYS if P.day_cardio(d))
+    roles = {c["type"]: c.get("role") for c in P.day_cardio(cardio)}
+    assert roles.get("Kürek") == "Kondisyon"      # rower = conditioning on its own day
+    assert all(roles.values())                    # every machine carries a distinct role

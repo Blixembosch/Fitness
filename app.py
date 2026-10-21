@@ -386,12 +386,15 @@ def page_home():
         if day["exercises"]:
             load = P.day_load(day, pextra)
             chips = "".join(f"<span class='chip'>{g}</span>" for g in P.day_groups(day))
-            chips += f"<span class='chip' style='color:var(--green)'>🏃 Eliptik/kürek {phase['ell']} dk</span>"
+            warm, fin = P.lifting_warmup(day), P.lifting_finisher(day)
+            for c in (warm, fin):
+                if c:
+                    chips += f"<span class='chip' style='color:var(--green)'>{P.CARDIO_ICON.get(c['type'],'🔥')} {c['role']} · {c['type']} {c['minutes']} dk</span>"
             st.markdown(
                 f"<div class='hero' style='background:radial-gradient(130% 90% at 100% 0%, color-mix(in srgb,{color} 30%,transparent), transparent 60%), linear-gradient(165deg, color-mix(in srgb,{color} 14%,var(--surface)), var(--surface) 78%); border:1px solid color-mix(in srgb,{color} 28%,var(--line))'>"
                 f"<div class='kick' style='color:{color}'>● {day['tag']} · RPE {phase['rpe']}</div>"
                 f"<h2>{day['name']}</h2><div class='chiprow'>{chips}</div>"
-                f"<div style='color:var(--muted);font-size:13px;margin-top:8px'>{load['exercises']} egzersiz · {load['sets']} set · +{phase['ell']} dk eliptik/kürek</div></div>",
+                f"<div style='color:var(--muted);font-size:13px;margin-top:8px'>{load['exercises']} egzersiz · {load['sets']} set · 5 dk ısınma + 10 dk bitiriş kardiyo</div></div>",
                 unsafe_allow_html=True,
             )
             st.button("▶ Antrenmana git", type="primary", use_container_width=True, on_click=navigate, args=("workout",))
@@ -471,15 +474,16 @@ def _plan_exercise_box(i, e, color):
 
 
 def _cardio_box(c):
-    """Cardio action card (HTML only, tiles in the grid): icon + name + duration badge + how-to."""
+    """Cardio action card (HTML only, tiles in the grid): icon + name + role + duration + how-to."""
     icon = P.CARDIO_ICON.get(c.get("type"), "🔥")
+    role = f"<span class='chip' style='font-size:10px;padding:2px 7px;color:var(--green)'>{c['role']}</span>" if c.get("role") else ""
     return (
         f"<div class='exrow' style='align-items:flex-start'>"
         f"<div style='width:38px;height:38px;border-radius:50%;background:color-mix(in srgb,var(--green) 18%,var(--surface-2));"
         f"display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:19px'>{icon}</div>"
         f"<div style='flex:1;min-width:0'>"
-        f"<div style='display:flex;align-items:baseline;gap:8px'><div style='font-weight:700;font-size:14px'>{c['name']}</div>"
-        f"<div style='font-family:Nunito;font-weight:800;color:var(--green);font-size:14px'>{c['minutes']} dk</div></div>"
+        f"<div style='display:flex;align-items:baseline;gap:8px;flex-wrap:wrap'><div style='font-weight:700;font-size:14px'>{c['name']}</div>"
+        f"<div style='font-family:Nunito;font-weight:800;color:var(--green);font-size:14px'>{c['minutes']} dk</div>{role}</div>"
         f"<div class='muted' style='font-size:12px;margin-top:4px;line-height:1.5'>{c.get('tip','')}</div></div></div>"
     )
 
@@ -534,16 +538,17 @@ def page_plan():
 
     if day["exercises"]:
         load = P.day_load(day, extra)
-        fin = P.lifting_finisher(day, phase["ell"])
+        warm, fin = P.lifting_warmup(day), P.lifting_finisher(day)
         chips = "".join(f"<span class='chip'>{g}</span>" for g in P.day_groups(day))
         st.markdown(
             f"<div class='hero' style='background:radial-gradient(130% 90% at 100% 0%, color-mix(in srgb,{color} 28%,transparent), transparent 60%), linear-gradient(165deg, color-mix(in srgb,{color} 13%,var(--surface)), var(--surface) 80%);border:1px solid color-mix(in srgb,{color} 26%,var(--line))'>"
             f"<div class='kick' style='color:{color}'>● {day['tag']} · RPE {phase['rpe']}</div><h2>{day['name']}</h2>"
             f"<div class='chiprow'>{chips}</div>"
-            f"<div style='color:var(--muted);font-size:13px;margin-top:8px'>{load['exercises']} egzersiz · {load['sets']} set · +{phase['ell']} dk eliptik/kürek · ~{load['minutes']+phase['ell']} dk</div></div>",
+            f"<div style='color:var(--muted);font-size:13px;margin-top:8px'>{load['exercises']} egzersiz · {load['sets']} set · 5 dk ısınma + 10 dk bitiriş · ~{load['minutes']+15} dk</div></div>",
             unsafe_allow_html=True,
         )
-        boxes = "".join(_plan_exercise_box(i, e, color) for i, e in enumerate(P.day_details(day, extra), 1))
+        boxes = _cardio_box(warm) if warm else ""
+        boxes += "".join(_plan_exercise_box(i, e, color) for i, e in enumerate(P.day_details(day, extra), 1))
         if fin:
             boxes += _cardio_box(fin)
         st.markdown(f"<div class='exgrid'>{boxes}</div>", unsafe_allow_html=True)
@@ -574,9 +579,12 @@ def page_plan():
             "**Hedef:** Wegovy ile hızlı kilo verirken kası korumak. GLP-1'de kaybın bir kısmı yağsız "
             "kütleden olur; bunu **yüksek protein + direnç antrenmanı** ciddi biçimde azaltır.\n\n"
             "**Haftalık yapı (4 seans):** 3 güç günü (Üst A / Alt A / Üst B) üst vücut + core ağırlıklı — "
-            "sırt, göğüs, omuz, karın önde (senin hedef bölgelerin). Her güç günü **sonunda** 10–15 dk "
-            "**eliptik veya kürek** bitiriş (önce ağırlık → sonra kardiyo); ayrıca Sal/Per **padel** ve 1 ayrı "
-            "**kardiyo** günü (kürek/eliptik/bisiklet).\n\n"
+            "sırt, göğüs, omuz, karın önde (senin hedef bölgelerin). Sal/Per **padel**, 1 ayrı **kardiyo** günü.\n\n"
+            "**Kardiyo aletleri ayrı işlevlerde (aynı sepette değil):**\n"
+            "- **Eliptik → ısınma + toparlanma:** düşük etkili. Her güç günü **başında 5 dk kolay** (eklem/dolaşım hazırlığı) ve bacak günü bitirişinde.\n"
+            "- **Bisiklet → yağ-yakım bitirişi:** üst güç günlerinin **sonunda 10 dk** — alt-vücut kardiyosu, çalıştığın üst vücudu yormaz.\n"
+            "- **Kürek → tam-vücut kondisyon:** ayrı **kardiyo gününde** interval (sırt + bacak + çekiş) — en zorlu iş, lift'lerle çakışmasın diye kendi gününde.\n"
+            "- **Sıra:** önce ağırlık (kalite + kas koruma) → sonra kardiyo; ağır kardiyoyu başa koymak kaldırışı düşürür (interference etkisi).\n\n"
             "**12 haftalık dönemselleştirme (periodization):**\n"
             "- **Hafta 1–4 Temel:** 3 set, RPE 6–7 — teknik ve adaptasyon, eklem/tendon hazırlığı.\n"
             "- **Hafta 5–8 Gelişim:** 4 set, RPE 7–8 — öncelikli kaslarda hacim; tekrar sabit (8/10/12), hedefi RPE'de tutturunca yükü artır.\n"
@@ -645,10 +653,10 @@ def page_workout():
     color = P.FOCUS_COLOR[day["focus"]]
     phase, extra = current_phase()
     load = P.day_load(day, extra)
-    fin = P.lifting_finisher(day, phase["ell"])
+    warm, fin = P.lifting_warmup(day), P.lifting_finisher(day)
     st.markdown(
         f"<div class='muted' style='font-size:13px;margin:2px 0 12px'>{phase['name']} · RPE {phase['rpe']} · "
-        f"{load['exercises']} egzersiz · {load['sets']} set · +{phase['ell']} dk eliptik/kürek</div>",
+        f"{load['exercises']} egzersiz · {load['sets']} set · 5 dk ısınma + 10 dk bitiriş</div>",
         unsafe_allow_html=True,
     )
     done_iso = TODAY.strftime("%Y-%m-%d")
@@ -661,6 +669,8 @@ def page_workout():
         f"<div style='font-family:Nunito;font-weight:800;font-size:13px'>{done_sets}/{load['sets']} set</div></div>",
         unsafe_allow_html=True,
     )
+    if warm:
+        st.markdown(f"<div class='exgrid' style='margin-bottom:8px'>{_cardio_box(warm)}</div>", unsafe_allow_html=True)
     for row in range(0, len(details), 3):
         cols = st.columns(3, gap="medium")
         for col, (i, e) in zip(cols, enumerate(details[row:row + 3], row + 1)):

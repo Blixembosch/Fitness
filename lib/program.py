@@ -45,14 +45,14 @@ DAYS = [
          {"id": "0407", "sets": 3, "reps": "12", "tip": "Bel/yan karın; tek dambıl, her yöne yana eğil."},
      ]},
     {"wd": 5, "key": "cardio", "name": "Kardiyo", "focus": "cardio", "tag": "Kardiyo",
-     "note": "Düşük etkili kardiyo — birini seç ya da kürek + eliptiği birleştir", "exercises": [],
+     "note": "Tam-vücut kondisyon günü — kürek öncelikli", "exercises": [],
      "cardio": [
-         {"name": "Kürek (rower)", "type": "Kürek", "minutes": 20, "kcal": 200,
-          "tip": "20 dk interval: 1 dk güçlü çek / 1 dk kolay. Sırt, bacak ve nefes bir arada."},
-         {"name": "Eliptik", "type": "Eliptik", "minutes": 15, "kcal": 150,
-          "tip": "15 dk orta tempo; eklem dostu, toparlanma kardiyosu — kürek sonrası ideal."},
-         {"name": "Bisiklet", "type": "Bisiklet", "minutes": 25, "kcal": 220,
-          "tip": "Alternatif: 25 dk sabit tempo ya da 5×(1 dk sprint / 2 dk kolay)."},
+         {"name": "Kürek (rower)", "type": "Kürek", "minutes": 20, "kcal": 200, "role": "Kondisyon",
+          "tip": "20 dk interval: 1 dk güçlü çek / 1 dk kolay. Tam-vücut — sırt, bacak ve çekiş; haftanın ana kondisyon işi."},
+         {"name": "Eliptik", "type": "Eliptik", "minutes": 15, "kcal": 150, "role": "Toparlanma",
+          "tip": "15 dk kolay-orta; düşük etkili toparlanma — kürekten sonra soğuma için ideal."},
+         {"name": "Bisiklet", "type": "Bisiklet", "minutes": 25, "kcal": 220, "role": "Dayanıklılık",
+          "tip": "Alternatif gün: 25 dk sabit tempo ya da 5×(1 dk sprint / 2 dk kolay) — alt-vücut dayanıklılık."},
      ]},
     {"wd": 6, "key": "rest", "name": "Dinlenme", "focus": "rest", "tag": "", "note": "Toparlanma", "exercises": []},
 ]
@@ -64,17 +64,37 @@ CARDIO_ICON = {"Kürek": "🚣", "Eliptik": "🏃", "Bisiklet": "🚴", "Kardiyo
 # The block runs in three 4-week phases. Volume (base sets) rises then holds while intensity (RPE)
 # climbs, which is the muscle-sparing pattern that matters most in a GLP-1 (Wegovy) deficit:
 # resistance volume + high protein protect lean mass while fat comes off. `base_sets` is the sets
-# per lift that phase, `ell` the elliptical finisher minutes on every lifting day.
+# per lift that phase.
 BASE_SETS = 3
 PHASES = [
-    {"weeks": (1, 4), "key": "temel", "name": "Temel · Adaptasyon", "base_sets": 3, "rpe": "6–7", "ell": 10,
+    {"weeks": (1, 4), "key": "temel", "name": "Temel · Adaptasyon", "base_sets": 3, "rpe": "6–7",
      "note": "Hareketleri oturt, eklem/tendon adaptasyonu. GLP-1'de enerji düşebilir — teknik ve protein öncelik, yükü zorlamadan ilerlet."},
-    {"weeks": (5, 8), "key": "gelisim", "name": "Gelişim · Yüklenme", "base_sets": 4, "rpe": "7–8", "ell": 12,
+    {"weeks": (5, 8), "key": "gelisim", "name": "Gelişim · Yüklenme", "base_sets": 4, "rpe": "7–8",
      "note": "Öncelikli kaslarda (sırt/göğüs/omuz/karın) hacmi artır; her lift'te +1 set. Tekrar sabit (8/10/12) — hedef tekrarı RPE'de tamamlayınca yükü artır."},
-    {"weeks": (9, 12), "key": "koruma", "name": "Koruma · Yoğunluk", "base_sets": 4, "rpe": "8", "ell": 15,
+    {"weeks": (9, 12), "key": "koruma", "name": "Koruma · Yoğunluk", "base_sets": 4, "rpe": "8",
      "note": "Açık büyüdükçe kası koru: yoğunluğu tut, yük bırakma. Yorgunluk birikirse 1 hafta deload (set/yoğunluk −%40). Uyku + protein kritik."},
 ]
 PROGRAM_WEEKS = 12
+
+# Each cardio machine has a DISTINCT function, so they are not interchangeable:
+#   • Elliptical — low-impact warm-up + recovery (every lift day, 5 min easy at the start)
+#   • Bike       — lower-body fat-loss finisher after UPPER days (spares the trained upper body)
+#   • Rower      — full-body conditioning / intervals, on its own cardio day (back + legs + pull)
+WARMUP = {"name": "Eliptik — ısınma", "type": "Eliptik", "minutes": 5, "role": "Isınma",
+          "tip": "Antrenman ÖNCESİ 5 dk KOLAY — eklem ve dolaşım hazırlığı. Eliptik düşük etkili ısınma/toparlanma aletidir."}
+_FINISHERS = {
+    "upper": {"name": "Bisiklet — yağ yakım", "type": "Bisiklet", "minutes": 10, "role": "Bitiriş",
+              "tip": "Antrenman SONUNDA 10 dk orta tempo. Bisiklet alt-vücut kardiyosu — üst antrenmanını yormaz."},
+    "lower": {"name": "Eliptik — toparlanma", "type": "Eliptik", "minutes": 10, "role": "Bitiriş",
+              "tip": "Antrenman SONUNDA 10 dk kolay-orta. Bacak gününden sonra düşük etkili; eklem dostu."},
+    "full": {"name": "Bisiklet — yağ yakım", "type": "Bisiklet", "minutes": 10, "role": "Bitiriş",
+             "tip": "Antrenman SONUNDA 10 dk orta tempo."},
+}
+
+
+def lifting_warmup(day: dict) -> dict | None:
+    """Elliptical warm-up at the START of every lift day (5 min easy, low-impact)."""
+    return dict(WARMUP) if day.get("focus") in ("upper", "lower", "full") else None
 
 
 def phase_for(week: int) -> dict:
@@ -91,15 +111,12 @@ def phase_extra_sets(phase: dict) -> int:
     return int(phase["base_sets"]) - BASE_SETS
 
 
-def lifting_finisher(day: dict, minutes: int) -> dict | None:
-    """Cardio finisher appended to every lifting day — elliptical OR rower, user's pick (both at
-    home). Done AFTER the lifts on purpose: strength first for quality + muscle sparing, then
-    low-intensity cardio for fat oxidation and recovery."""
-    if day.get("focus") in ("upper", "lower", "full"):
-        return {"name": "Eliptik veya kürek (bitiriş)", "type": "Eliptik", "minutes": int(minutes),
-                "tip": f"Antrenman SONUNDA {int(minutes)} dk orta tempo — eliptik ya da kürek (su küreği). "
-                       "Ağırlıktan sonra: yağ yakımı + toparlanma, kaldırış performansını düşürmez."}
-    return None
+def lifting_finisher(day: dict) -> dict | None:
+    """Fat-loss finisher at the END of a lift day, picked by function: bike after upper days (spares
+    the trained upper body), elliptical after the leg day (low-impact). Done after the lifts so
+    strength quality + muscle sparing come first, then low-intensity cardio for fat oxidation."""
+    f = _FINISHERS.get(day.get("focus"))
+    return dict(f) if f else None
 
 
 TRAINING_DAYS = [d for d in DAYS if d["exercises"]]  # the 3 lifting days
