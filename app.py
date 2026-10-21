@@ -862,9 +862,9 @@ def _exercise_box(i: int, e: dict, day_color: str, day_key: str, date_iso: str, 
             f"</div></div>",
             unsafe_allow_html=True,
         )
-        b1, b2 = st.columns([4, 1])
-        btn_lbl = "✓ Tamamlandı" if finished else ("✓ Tamamla (10 dk)" if is_cardio else f"+ Set Tamamla ({done+1}/{total})")
-        if b1.button(btn_lbl, key=f"s_{key}", use_container_width=True, disabled=finished, type="primary" if not finished else "secondary"):
+        b1, b2 = st.columns([4.2, 1])
+        btn_lbl = "✓ Tamamlandı" if finished else ("✓ Tamamla" if is_cardio else f"+ Set ({done+1}/{total})")
+        if b1.button(btn_lbl, key=f"s_{key}", use_container_width=True, disabled=finished):
             S["setlog"][key] = min(total, done + 1)
             if day_obj and all_steps:
                 lift_steps = [ex for ex in all_steps if ex.get("kind") == "lift"]
@@ -919,12 +919,8 @@ def page_workout():
         f"<div class='kick' style='color:{color}'>● {day['tag']} · RPE {phase['rpe']}{weg_note}</div>"
         f"<h2>{day['name']}</h2>"
         f"<div class='chiprow'>{chips}</div>"
-        f"<div class='muted' style='font-size:13px;margin:8px 0 12px'>{len(steps)} numaralı adım ({load['exercises']} güç + Eliptik ısınma + Kürek & Eliptik yağ yakım) · {load['sets']} güç seti + 25 dk kardiyo</div>"
-        f"<div style='display:flex;align-items:center;gap:12px;flex-wrap:wrap'>"
-        f"<div style='flex:1;min-width:180px'><div style='height:8px;border-radius:5px;background:var(--surface-2);overflow:hidden'>"
-        f"<div style='height:100%;width:{done_pct}%;background:{color};border-radius:5px;transition:width .3s'></div></div></div>"
-        f"<div style='font-family:Nunito;font-weight:800;font-size:13px;color:var(--fg)'>{done_units}/{total_units} adım/set tamamlandı ({done_pct}%)</div>"
-        f"</div></div>",
+        f"<div class='muted' style='font-size:13px;margin-top:8px'>{len(steps)} numaralı adım ({load['exercises']} güç + Eliptik ısınma + Kürek & Eliptik yağ yakım) · {load['sets']} güç seti + 25 dk kardiyo · <span style='color:var(--fg);font-weight:700'>{done_units}/{total_units} adım tamam</span></div>"
+        f"</div>",
         unsafe_allow_html=True,
     )
     # Render all numbered steps (1..N: Eliptik warm-up -> Lifts -> Rower -> Eliptik finisher) in a cohesive 3-col grid
@@ -937,7 +933,7 @@ def page_workout():
     already = any(w["date"] == done_iso and w.get("key") == day["key"] for w in S["workouts"])
     if already:
         st.success("Bugün bu antrenman tamamlandı ✓")
-    elif st.button("✅ Tüm antrenmanı (güç + kürek + eliptik) tamamladım", type="primary", use_container_width=True):
+    elif st.button("✅ Tüm antrenmanı tamamla", use_container_width=True):
         prim, sec = P.day_muscles(day)
         for ex in steps:
             S["setlog"][f"{done_iso}|{day['key']}|{ex['id']}"] = int(ex["sets"])
