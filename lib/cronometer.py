@@ -24,10 +24,25 @@ TYPE_LABELS = {
     "rowing": "Kürek",
     "mixed cardio": "Kardiyo",
     "mix cardio": "Kardiyo",
-    "functional strength training": "Fonksiyonel",
+    "functional strength training": "Güç",
+    "traditional strength training": "Güç",
+    "strength training": "Güç",
+    "core training": "Güç",
     "gardening": "Bahçe",
 }
 _PADEL = ("tennis", "padel", "racquet", "raket")
+# Apple Health strength-type sessions that count as a program (strength) workout — Cronometer
+# only carries duration + kcal, so the match with our plan is at the session level, not per set.
+_STRENGTH_LABELS = {"Güç"}
+
+
+def category(label: str) -> str:
+    """'padel' | 'strength' | 'cardio' for a cleaned type label."""
+    if is_padel(label):
+        return "padel"
+    if label in _STRENGTH_LABELS:
+        return "strength"
+    return "cardio"
 
 
 def _read(file) -> pd.DataFrame:
@@ -91,7 +106,7 @@ def parse_exercises(file) -> pd.DataFrame:
     Names are cleaned of the '(Apple Health)' suffix and mapped to short labels; Calories Burned
     is stored as a positive number (the export logs expenditure as negative). Daily
     'Active Energy Balance' rows are NOT sessions — use parse_active_energy for those."""
-    cols = ["date", "type", "padel", "minutes", "kcal"]
+    cols = ["date", "type", "cat", "padel", "minutes", "kcal"]
     df = _read(file)
     if df.empty:
         return pd.DataFrame(columns=cols)
@@ -108,7 +123,8 @@ def parse_exercises(file) -> pd.DataFrame:
     out = pd.DataFrame()
     out["date"] = pd.to_datetime(df[day], errors="coerce").dt.strftime("%Y-%m-%d")
     out["type"] = df[ex].map(clean_type)
-    out["padel"] = df[ex].map(is_padel)
+    out["cat"] = out["type"].map(category)
+    out["padel"] = out["cat"] == "padel"
     out["minutes"] = pd.to_numeric(df[mn], errors="coerce").abs().fillna(0) if mn else 0
     out["kcal"] = pd.to_numeric(df[cal], errors="coerce").abs().fillna(0) if cal else 0
     return out.dropna(subset=["date"]).reset_index(drop=True)

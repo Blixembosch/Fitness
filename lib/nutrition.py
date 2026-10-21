@@ -14,13 +14,22 @@ def bmr(weight_kg: float, height_cm: float, age: int, sex: str = "male") -> int:
 
 
 def estimate_targets(weight_kg, height_cm, age, sex="male", activity="light",
-                     deficit=500, floor=1500, protein_per_kg=1.5, fat_pct=0.30) -> dict:
+                     deficit=500, floor=1500, protein_per_kg=1.5, fat_pct=0.30, kcal=None) -> dict:
+    """TDEE from Mifflin-St Jeor × activity. `kcal` fixes the calorie goal directly (a manual
+    target); otherwise it's TDEE − deficit, floored. Returns tdee, kcal, protein/carbs/fat and the
+    implied daily deficit vs TDEE (negative = surplus)."""
     tdee = round(bmr(weight_kg, height_cm, age, sex) * ACTIVITY.get(activity, ACTIVITY["light"]))
-    kcal = max(floor, round((tdee - deficit) / 10) * 10)
+    kcal = round(kcal / 10) * 10 if kcal else max(floor, round((tdee - deficit) / 10) * 10)
     protein = round(protein_per_kg * weight_kg)
     fat = round(kcal * fat_pct / 9)
     carbs = max(0, round((kcal - protein * 4 - fat * 9) / 4))
-    return {"tdee": tdee, "kcal": kcal, "protein": protein, "carbs": carbs, "fat": fat}
+    return {"tdee": tdee, "kcal": kcal, "protein": protein, "carbs": carbs, "fat": fat,
+            "deficit": tdee - kcal}
+
+
+def weekly_loss(deficit_kcal) -> float:
+    """Approx kg/week from a daily kcal deficit (~7700 kcal per kg of fat)."""
+    return round((deficit_kcal or 0) * 7 / 7700, 2)
 
 
 def bmi(weight_kg: float, height_cm: float):
