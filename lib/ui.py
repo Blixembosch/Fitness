@@ -55,18 +55,30 @@ h1, h2, h3, h4 {
 .block-container{ padding-top:1.1rem; padding-bottom:3rem; max-width:1180px; }
 #MainMenu, header, footer, [data-testid="stDecoration"], [data-testid="stStatusWidget"] { display:none !important; }
 
-/* Distinct, elevated card separation for `st.container(border=True)` (exercise boxes) */
-[data-testid="stVerticalBlockBorderWrapper"]{
+/* Unified Card Architecture across all pages (Plan, Workout, Stats, Nutrition) */
+.exrow,
+.fcard,
+.tile,
+.hero,
+.gh-card,
+[data-testid="stVerticalBlockBorderWrapper"] {
   background:var(--surface) !important;
   border:1.5px solid var(--line) !important;
   border-radius:20px !important;
   box-shadow:var(--shadow) !important;
-  padding:16px !important;
   color:var(--fg) !important;
-  margin-bottom:12px !important;
-  transition:border-color .15s ease, box-shadow .15s ease;
+  transition:border-color .15s ease, box-shadow .15s ease, transform .15s ease;
 }
-[data-testid="stVerticalBlockBorderWrapper"]:hover{
+
+[data-testid="stVerticalBlockBorderWrapper"] {
+  padding:16px !important;
+  margin-bottom:12px !important;
+}
+
+.exrow:hover,
+.fcard:hover,
+.tile:hover,
+[data-testid="stVerticalBlockBorderWrapper"]:hover {
   border-color:color-mix(in srgb,var(--blue) 55%,var(--line)) !important;
   box-shadow:0 8px 24px rgba(0,0,0,.60) !important;
 }
@@ -309,19 +321,49 @@ div[data-testid="stCheckbox"] label span {
 
 /* Weekly, Monthly & Calendar Strips */
 .wk-strip{ display:grid; grid-template-columns:repeat(7,1fr); gap:8px; margin-top:10px; }
-.wk-day{ background:var(--surface-2); border:1px solid var(--line); border-radius:14px; padding:10px 6px; text-align:center; color:var(--fg); }
-.wk-day.today{ border-color:var(--blue); box-shadow:0 0 0 1px color-mix(in srgb,var(--blue) 45%,transparent); }
-.wk-day.done{ background:color-mix(in srgb,var(--green) 14%,var(--surface-2)); border-color:color-mix(in srgb,var(--green) 45%,var(--line)); }
+.wk-day{
+  background:var(--surface-2) !important;
+  border:1.5px solid var(--line) !important;
+  border-radius:16px !important;
+  padding:12px 6px !important;
+  text-align:center !important;
+  color:var(--fg) !important;
+  box-shadow:var(--shadow) !important;
+  transition:all .15s ease !important;
+}
+.wk-day.today{
+  border-color:var(--blue) !important;
+  box-shadow:0 0 0 1.5px var(--blue), var(--shadow) !important;
+}
+.wk-day.done{
+  background:color-mix(in srgb,var(--green) 18%,var(--surface-2)) !important;
+  border-color:var(--green) !important;
+}
 
 .mo-grid{ display:grid; grid-template-columns:repeat(7,1fr); gap:6px; margin-top:10px; }
-.mo-cell{ background:var(--surface-2); border:1px solid var(--line); border-radius:11px; padding:8px 6px; text-align:center; font-size:11.5px; color:var(--fg); }
-.mo-cell.today{ border-color:var(--blue); box-shadow:0 0 0 1px var(--blue); }
-.mo-cell.done{ background:color-mix(in srgb,var(--green) 16%,var(--surface-2)); border-color:color-mix(in srgb,var(--green) 45%,var(--line)); }
+.mo-cell{
+  background:var(--surface-2) !important;
+  border:1.5px solid var(--line) !important;
+  border-radius:14px !important;
+  padding:10px 8px !important;
+  text-align:center !important;
+  font-size:11.5px !important;
+  color:var(--fg) !important;
+  transition:all .15s ease !important;
+}
+.mo-cell.today{
+  border-color:var(--blue) !important;
+  box-shadow:0 0 0 1.5px var(--blue) !important;
+}
+.mo-cell.done{
+  background:color-mix(in srgb,var(--green) 18%,var(--surface-2)) !important;
+  border-color:var(--green) !important;
+}
 
 /* Streamlit Button & Expander Contrast */
 .stButton>button{
   border-radius:13px !important; font-weight:700 !important;
-  border:1px solid var(--line) !important;
+  border:1.5px solid var(--line) !important;
   background:var(--surface-2) !important;
   color:var(--fg) !important;
 }

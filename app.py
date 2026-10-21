@@ -838,17 +838,26 @@ def _exercise_box(i: int, e: dict, day_color: str, day_key: str, date_iso: str, 
     meta_txt = e["reps"] if is_cardio else f"{e['sets']}×{e['reps']}"
     title_txt = e["name"] if is_cardio else e["name"].title()
 
+    badge_bg = "var(--green)" if finished else f"color-mix(in srgb,{accent} 22%,var(--surface-2))"
+    badge_fg = "#ffffff" if finished else accent
+    badge_content = "✓" if finished else str(i)
+    badge_border = "var(--green)" if finished else f"color-mix(in srgb,{accent} 45%,transparent)"
+
     with st.container(border=True):
         st.markdown(
-            f"<div class='excard-head'>"
-            f"<div class='excard-ring'>{ui.ring_svg(done / total if total else 0, ringcol, 52)}"
-            f"<div style='font-family:Nunito;font-weight:800;font-size:13px;margin-top:3px;color:var(--fg)'>{done}/{total}</div></div>"
-            f"<div class='excard-info'>"
-            f"<div class='excard-title' title='{title_txt}'>{i}. {title_txt} {'✅' if finished else ''}</div>"
-            f"<div class='excard-meta'>"
-            f"<span style='font-family:Nunito;font-weight:800;color:{accent};font-size:14.5px'>{meta_txt}</span>"
-            f"{kg_badge}</div>"
-            f"<div class='chiprow' style='margin:0'>{chips}</div>"
+            f"<div style='display:flex;align-items:flex-start;gap:12px;min-height:78px;margin-bottom:6px'>"
+            f"<div style='display:flex;flex-direction:column;align-items:center;flex-shrink:0;width:38px'>"
+            f"<div style='width:36px;height:36px;border-radius:50%;background:{badge_bg};color:{badge_fg};"
+            f"border:1.5px solid {badge_border};font-family:Nunito;font-weight:900;font-size:15px;"
+            f"display:flex;align-items:center;justify-content:center'>{badge_content}</div>"
+            f"<div style='font-family:Nunito;font-weight:800;font-size:11px;margin-top:3px;color:{ringcol};text-align:center'>{done}/{total}</div>"
+            f"</div>"
+            f"<div style='flex:1;min-width:0'>"
+            f"<div style='display:flex;justify-content:space-between;align-items:flex-start;gap:6px'>"
+            f"<div style='font-weight:800;font-size:14.5px;color:var(--fg);line-height:1.25;flex:1'>{title_txt}</div>"
+            f"<div style='font-family:Nunito;font-weight:800;color:{accent};font-size:14px;flex-shrink:0'>{meta_txt}</div>"
+            f"</div>"
+            f"<div class='chiprow' style='margin:4px 0 0'>{chips}{kg_badge}</div>"
             f"</div></div>",
             unsafe_allow_html=True,
         )
@@ -905,19 +914,26 @@ def page_workout():
     steps = P.workout_steps(day, extra)
     ws = wegovy_status()
     weg_note = f" · 💉 Wegovy ({ws['dose_mg']:g} mg) 48s esnek RPE" if ws["in_48h"] else ""
-    st.markdown(
-        f"<div class='muted' style='font-size:13.5px;margin:2px 0 12px'>{phase['name']} · RPE {phase['rpe']}{weg_note} · "
-        f"<b>{len(steps)} adım</b> ({load['exercises']} güç + Eliptik ısınma + Kürek & Eliptik yağ yakım) · {load['sets']} güç seti + 25 dk kardiyo</div>",
-        unsafe_allow_html=True,
-    )
     done_iso = TODAY.strftime("%Y-%m-%d")
     total_units = sum(int(e["sets"]) for e in steps)
     done_units = sum(S["setlog"].get(f"{done_iso}|{day['key']}|{e['id']}", 0) for e in steps)
+    done_pct = round(done_units / total_units * 100) if total_units else 0
+
+    chips = "".join(f"<span class='chip'>{g}</span>" for g in P.day_groups(day))
+    chips += "<span class='chip' style='color:var(--green)'>🏃 Eliptik 5+10 dk</span>"
+    chips += "<span class='chip' style='color:var(--orange)'>🚣 Kürek 10 dk</span>"
+
     st.markdown(
-        f"<div class='fcard' style='padding:10px 14px;display:flex;align-items:center;gap:10px'>"
-        f"<div style='flex:1'><div style='height:8px;border-radius:5px;background:var(--surface-2);overflow:hidden'>"
-        f"<div style='height:100%;width:{round(done_units/total_units*100) if total_units else 0}%;background:{color};border-radius:5px'></div></div></div>"
-        f"<div style='font-family:Nunito;font-weight:800;font-size:13px;color:var(--fg)'>{done_units}/{total_units} adım/set</div></div>",
+        f"<div class='hero' style='background:radial-gradient(130% 90% at 100% 0%, color-mix(in srgb,{color} 28%,transparent), transparent 60%), linear-gradient(165deg, color-mix(in srgb,{color} 13%,var(--surface)), var(--surface) 80%);border:1.5px solid color-mix(in srgb,{color} 36%,var(--line));box-shadow:var(--shadow);margin-bottom:14px'>"
+        f"<div class='kick' style='color:{color}'>● {day['tag']} · RPE {phase['rpe']}{weg_note}</div>"
+        f"<h2>{day['name']}</h2>"
+        f"<div class='chiprow'>{chips}</div>"
+        f"<div class='muted' style='font-size:13px;margin:8px 0 12px'>{len(steps)} numaralı adım ({load['exercises']} güç + Eliptik ısınma + Kürek & Eliptik yağ yakım) · {load['sets']} güç seti + 25 dk kardiyo</div>"
+        f"<div style='display:flex;align-items:center;gap:12px;flex-wrap:wrap'>"
+        f"<div style='flex:1;min-width:180px'><div style='height:8px;border-radius:5px;background:var(--surface-2);overflow:hidden'>"
+        f"<div style='height:100%;width:{done_pct}%;background:{color};border-radius:5px;transition:width .3s'></div></div></div>"
+        f"<div style='font-family:Nunito;font-weight:800;font-size:13px;color:var(--fg)'>{done_units}/{total_units} adım/set tamamlandı ({done_pct}%)</div>"
+        f"</div></div>",
         unsafe_allow_html=True,
     )
     # Render all numbered steps (1..N: Eliptik warm-up -> Lifts -> Rower -> Eliptik finisher) in a cohesive 3-col grid
