@@ -1,9 +1,7 @@
+# No `base` is set on purpose: the app follows the viewer's system (light/dark) theme,
+# and lib/ui.py defines matching light + dark palettes via prefers-color-scheme.
 [theme]
-base = "dark"
 primaryColor = "#0a84ff"
-backgroundColor = "#070809"
-secondaryBackgroundColor = "#14161d"
-textColor = "#f3f5fa"
 font = "sans serif"
 
 [server]
