@@ -939,6 +939,8 @@ def page_workout():
         st.success(f"{day['name']} kalıcı olarak kaydedildi ✓")
         st.rerun()
 
+    st.markdown("<div class='section-divider'><span>Ek Seçenekler & Egzersiz Rehberi</span></div>", unsafe_allow_html=True)
+
     cardio_day = next((d for d in P.DAYS if P.day_cardio(d)), None)
     if cardio_day:
         with st.expander("🚴 Cumartesi özel kardiyo günü seçenekleri (kürek · eliptik · bisiklet)"):
@@ -1037,6 +1039,8 @@ def _render_period_plan_view(period: str):
         for w in range(1, PROGRAM_WEEKS + 1):
             ph = P.phase_for(w)
             w_start = START_DATE + dt.timedelta(weeks=w - 1)
+            w_end = w_start + dt.timedelta(days=6)
+            iso_week = w_start.isocalendar()[1]
             w_iso = w_start.strftime("%Y-%m-%d")
             s_cnt, p_cnt = week_counts(w_iso)
             is_cur = (w == cur_wk and pp["started"])
@@ -1044,13 +1048,15 @@ def _render_period_plan_view(period: str):
             cls = "mo-cell" + (" today" if is_cur else "") + (" done" if (s_cnt >= STRENGTH_TARGET) else "")
             wk_cards += (
                 f"<div class='{cls}' style='padding:10px 8px'>"
-                f"<div style='font-size:10.5px;font-weight:800;color:{b_col};text-transform:uppercase'>Hafta {w} · RPE {ph['rpe']}</div>"
-                f"<div style='font-weight:800;font-size:13px;margin:4px 0;color:var(--fg)'>{ph['name'].split('·')[0].strip()}</div>"
-                f"<div class='muted' style='font-size:11px'>{s_cnt}/{STRENGTH_TARGET} güç · {p_cnt}/{PADEL_TARGET} padel</div>"
+                f"<div style='font-size:10.5px;font-weight:800;color:{b_col};text-transform:uppercase'>"
+                f"Hafta {iso_week} · Blok H{w}</div>"
+                f"<div style='font-weight:800;font-size:12.5px;margin:3px 0;color:var(--fg)'>{w_start.day} {MON[w_start.month-1]}–{w_end.day} {MON[w_end.month-1]}</div>"
+                f"<div style='font-size:11px;color:var(--muted);margin-bottom:2px'>{ph['name'].split('·')[0].strip()} · RPE {ph['rpe']}</div>"
+                f"<div class='muted' style='font-size:10.5px;font-weight:700'>{s_cnt}/{STRENGTH_TARGET} güç · {p_cnt}/{PADEL_TARGET} padel</div>"
                 f"</div>"
             )
         st.markdown(
-            "<div class='fcard'><div class='eyebrow'>3 Aylık (12 Hafta) Wegovy Dönemselleştirme Blok Takibi</div>"
+            "<div class='fcard'><div class='eyebrow'>3 Aylık (12 Hafta) Wegovy Dönemselleştirme Blok Takibi (Yılın Haftaları)</div>"
             f"<div style='display:grid;grid-template-columns:repeat(auto-fill,minmax(145px,1fr));gap:8px'>{wk_cards}</div></div>",
             unsafe_allow_html=True,
         )
@@ -1117,7 +1123,7 @@ def page_stats():
     # ---- evidence-based targets ----
     eff_w = pband["eff_weight"] if pband.get("mode") == "adjusted" else weight_kg
     gkg = metrics.protein_per_kg(avg_prot, eff_w)
-    loss = metrics.weekly_loss_pct(wwin if len(wwin) > 1 else wdf)
+    loss = metrics.weekly_loss_pct(wwin) if metrics.weekly_loss_pct(wwin) is not None else metrics.weekly_loss_pct(wdf)
     _, extra = current_phase()
     vol = {}
     for d in P.TRAINING_DAYS:
@@ -1138,9 +1144,9 @@ def page_stats():
                               f"{metrics.PROTEIN_GKG[0]}–{metrics.PROTEIN_GKG[1]}", cls, word, prot_note))
     s = metrics.band(loss, *metrics.LOSS_PCT_WK)
     cls, word = metrics.verdict(s, "yavaş", "hızlı (kas riski)")
-    rows.append(ui.metric_row("Kilo kaybı hızı", f"{loss if loss is not None else '–'} %/hafta",
+    rows.append(ui.metric_row("Kilo kaybı hızı (Tartım Trendi)", f"{loss if loss is not None else '–'} %/hafta",
                               f"%{metrics.LOSS_PCT_WK[0]}–{metrics.LOSS_PCT_WK[1]}", cls, word,
-                              "Çok hızlı kayıp kasını da götürür; yavaş ve istikrarlı daha iyi."))
+                              "Tartıdaki gerçek değişimden hesaplanır (en az 7 günlük trend). Hedef kalori (1900/2100) ise teorik 'Tahmini Kayıp'ı belirler."))
     s = metrics.band(avg_sets, *metrics.SETS_PER_MUSCLE)
     cls, word = metrics.verdict(s, "düşük", "yüksek")
     rows.append(ui.metric_row("Haftalık set / kas", f"~{avg_sets} set",
@@ -1423,21 +1429,17 @@ def page_nutrition():
     )
 
 
-# ---------------- nav (top bar + dynamic theme switcher) ----------------
+# ---------------- nav (top bar - automatic system theme) ----------------
 NAV = [("home", "🏠"), ("plan", "🗓"), ("workout", "🏋️"), ("stats", "📈"), ("nutrition", "🔥")]
 LABEL = {"home": "Ana Sayfa", "plan": "Plan", "workout": "Antrenman", "stats": "İstatistik", "nutrition": "Beslenme"}
 PAGES = {"home": page_home, "plan": page_plan, "workout": page_workout, "stats": page_stats, "nutrition": page_nutrition}
 
-cols = st.columns([1, 1, 1, 1, 1, 0.55])
-for col, (key, icon) in zip(cols[:5], NAV):
+cols = st.columns(5)
+for col, (key, icon) in zip(cols, NAV):
     with col:
         st.button(f"{icon}  {LABEL[key]}", key=f"nav_{key}", use_container_width=True,
                   type="primary" if S["page"] == key else "secondary",
                   on_click=navigate, args=(key,))
-with cols[5]:
-    cur_theme = S["body"].get("theme", "dark")
-    theme_btn = "☀️ Gündüz" if cur_theme == "dark" else "🌙 Gece"
-    st.button(theme_btn, key="nav_theme", use_container_width=True, type="secondary", on_click=toggle_theme)
 
 st.markdown("<div style='height:6px'></div>", unsafe_allow_html=True)
 

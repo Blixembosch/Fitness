@@ -1,5 +1,5 @@
-"""Shared UI: CSS injection with dynamic Dark/Light theme switching and HTML builders (rings, tiles,
-cards, GitHub-style heatmap, and monthly/12-week views)."""
+"""Shared UI: CSS injection with automatic system Dark/Light theme detection (prefers-color-scheme)
+and cohesive HTML builders (rings, tiles, cards, GitHub-style heatmap, and monthly/annual views)."""
 from __future__ import annotations
 import datetime as dt
 import streamlit as st
@@ -7,35 +7,42 @@ import streamlit as st
 MON_TR = ["Oca", "Şub", "Mar", "Nis", "May", "Haz", "Tem", "Ağu", "Eyl", "Eki", "Kas", "Ara"]
 DOW_TR = ["Pzt", "Sal", "Çar", "Per", "Cum", "Cmt", "Paz"]
 
-_PALETTES = {
-    "dark": """
-  --bg:#0b0e14; --surface:#151922; --surface-2:#1e2431; --line:rgba(255,255,255,.12);
+CSS = """
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Nunito:wght@700;800;900&family=Hanken+Grotesk:wght@400;500;600;700&display=swap');
+
+/* Automatic System Themes: Dark is default for dark OS; Light flips automatically when viewer OS is in light mode */
+:root {
+  --bg:#090c12; --surface:#131824; --surface-2:#1c2333; --surface-elevated:#222b3e;
+  --line:rgba(255,255,255,.14); --line-strong:rgba(255,255,255,.24);
   --fg:#f8fafc; --muted:#cbd5e1; --faint:#94a3b8;
   --blue:#3898ff; --purple:#c084fc; --orange:#fb923c; --green:#34d399; --teal:#22d3ee; --red:#f87171;
-  --track:#262d3d; --map1:#1e40af; --map2:#2563eb; --map3:#3898ff;
-  --shadow:0 4px 14px rgba(0,0,0,.45);
-  --gh-0:#1e2431; --gh-1:#0e4429; --gh-2:#006d32; --gh-3:#26a641; --gh-4:#39d353;
-""",
-    "light": """
-  --bg:#f4f6fb; --surface:#ffffff; --surface-2:#eef2f8; --line:rgba(15,23,42,.11);
-  --fg:#0f172a; --muted:#475569; --faint:#64748b;
-  --blue:#0a7aff; --purple:#9333ea; --orange:#ea580c; --green:#16a34a; --teal:#0891b2; --red:#dc2626;
-  --track:#e2e8f0; --map1:#bfdbfe; --map2:#60a5fa; --map3:#0a7aff;
-  --shadow:0 2px 10px rgba(15,23,42,.06);
-  --gh-0:#ebedf0; --gh-1:#9be9a8; --gh-2:#40c463; --gh-3:#30a14e; --gh-4:#216e39;
-""",
+  --track:#242c3e; --map1:#1e40af; --map2:#2563eb; --map3:#3898ff;
+  --shadow:0 4px 16px rgba(0,0,0,.50);
+  --gh-0:#1c2333; --gh-1:#0e4429; --gh-2:#006d32; --gh-3:#26a641; --gh-4:#39d353;
+  --seg-bg:#1c2333; --seg-btn:transparent; --seg-btn-hover:#242d40; --seg-active:#3898ff;
+  --input-bg:#1c2333; --input-fg:#f8fafc;
 }
 
-CSS_BODY = """
-@import url('https://fonts.googleapis.com/css2?family=Nunito:wght@700;800;900&family=Hanken+Grotesk:wght@400;500;600;700&display=swap');
+@media (prefers-color-scheme: light) {
+  :root {
+    --bg:#f4f6fb; --surface:#ffffff; --surface-2:#eef2f8; --surface-elevated:#f8fafc;
+    --line:rgba(15,23,42,.12); --line-strong:rgba(15,23,42,.22);
+    --fg:#0f172a; --muted:#475569; --faint:#64748b;
+    --blue:#0a7aff; --purple:#9333ea; --orange:#ea580c; --green:#16a34a; --teal:#0891b2; --red:#dc2626;
+    --track:#e2e8f0; --map1:#bfdbfe; --map2:#60a5fa; --map3:#0a7aff;
+    --shadow:0 2px 10px rgba(15,23,42,.06);
+    --gh-0:#ebedf0; --gh-1:#9be9a8; --gh-2:#40c463; --gh-3:#30a14e; --gh-4:#216e39;
+    --seg-bg:#eef2f8; --seg-btn:transparent; --seg-btn-hover:#e2e8f0; --seg-active:#0a7aff;
+    --input-bg:#ffffff; --input-fg:#0f172a;
+  }
+}
 
 html, body, .stApp, [data-testid="stAppViewContainer"], [data-testid="stMain"] {
   background:var(--bg) !important;
   color:var(--fg) !important;
   font-family:"Hanken Grotesk",system-ui,sans-serif;
 }
-/* Force high-contrast foreground text on all Streamlit markdown/containers so Streamlit's default
-   charcoal (#31333F) never bleeds into dark mode! */
 .stMarkdown, [data-testid="stMarkdownContainer"], p, span, div, label {
   font-family:"Hanken Grotesk",system-ui,sans-serif;
   color:inherit;
@@ -48,21 +55,100 @@ h1, h2, h3, h4 {
 .block-container{ padding-top:1.1rem; padding-bottom:3rem; max-width:1180px; }
 #MainMenu, header, footer, [data-testid="stDecoration"], [data-testid="stStatusWidget"] { display:none !important; }
 
-/* Unify Streamlit bordered containers (`st.container(border=True)`) with `.fcard` / `.exrow` */
+/* Unify Streamlit bordered containers (`st.container(border=True)`) with `.fcard` */
 [data-testid="stVerticalBlockBorderWrapper"]{
   background:var(--surface) !important;
   border:1px solid var(--line) !important;
   border-radius:20px !important;
   box-shadow:var(--shadow) !important;
-  padding:15px 16px !important;
+  padding:16px !important;
   color:var(--fg) !important;
   transition:border-color .15s ease, transform .15s ease;
 }
 [data-testid="stVerticalBlockBorderWrapper"]:hover{
-  border-color:color-mix(in srgb,var(--blue) 35%,var(--line)) !important;
+  border-color:color-mix(in srgb,var(--blue) 45%,var(--line)) !important;
 }
 
-/* Exercise card internal layout — guarantees uniform height across all 3 columns */
+/* FIX: Segmented control & ButtonGroup (st.segmented_control / st.pills for Üst A / Alt A / Üst B & Hafta / Ay)
+   Eliminates the bright white boxes completely in Dark Mode! */
+div.stButtonGroup,
+div[data-testid="stButtonGroup"],
+div[data-testid="stSegmentedControl"],
+div[data-baseweb="button-group"] {
+  background:var(--seg-bg) !important;
+  border:1px solid var(--line) !important;
+  border-radius:14px !important;
+  padding:4px !important;
+  gap:4px !important;
+}
+div.stButtonGroup button,
+div.stButtonGroup [role="button"],
+div[data-testid="stButtonGroup"] button,
+div[data-testid="stButtonGroup"] [role="button"],
+div[data-testid="stSegmentedControl"] button,
+div[data-baseweb="button-group"] button {
+  background:var(--seg-btn) !important;
+  color:var(--muted) !important;
+  border:1px solid transparent !important;
+  border-radius:10px !important;
+  font-family:"Nunito",sans-serif !important;
+  font-weight:800 !important;
+  font-size:13.5px !important;
+  padding:6px 16px !important;
+  transition:all .15s ease !important;
+}
+div.stButtonGroup button:hover,
+div.stButtonGroup [role="button"]:hover,
+div[data-testid="stButtonGroup"] button:hover,
+div[data-testid="stButtonGroup"] [role="button"]:hover,
+div[data-testid="stSegmentedControl"] button:hover,
+div[data-baseweb="button-group"] button:hover {
+  background:var(--seg-btn-hover) !important;
+  color:var(--fg) !important;
+}
+div.stButtonGroup button[data-selected],
+div.stButtonGroup button[aria-checked="true"],
+div.stButtonGroup button[aria-pressed="true"],
+div.stButtonGroup [data-selected="true"],
+div.stButtonGroup [role="button"][data-selected],
+div[data-testid="stButtonGroup"] button[data-selected],
+div[data-testid="stButtonGroup"] button[aria-checked="true"],
+div[data-testid="stButtonGroup"] button[aria-pressed="true"],
+div[data-testid="stButtonGroup"] [data-selected="true"],
+div[data-testid="stButtonGroup"] [role="button"][data-selected],
+div[data-testid="stSegmentedControl"] button[aria-checked="true"],
+div[data-testid="stSegmentedControl"] button[aria-pressed="true"],
+div[data-baseweb="button-group"] button[aria-checked="true"],
+div[data-baseweb="button-group"] button[aria-pressed="true"] {
+  background:var(--seg-active) !important;
+  color:#ffffff !important;
+  border-color:var(--seg-active) !important;
+  box-shadow:0 2px 8px rgba(0,0,0,.25) !important;
+}
+div.stButtonGroup button *,
+div.stButtonGroup [role="button"] *,
+div[data-testid="stButtonGroup"] button *,
+div[data-testid="stButtonGroup"] [role="button"] * {
+  color:inherit !important;
+}
+
+/* FIX: Number inputs & Text inputs in Dark Mode (no more white boxes!) */
+[data-baseweb="input"], [data-baseweb="base-input"], [data-baseweb="select"] > div {
+  background:var(--input-bg) !important;
+  color:var(--input-fg) !important;
+  border:1px solid var(--line) !important;
+  border-radius:12px !important;
+}
+[data-baseweb="input"] input, [data-baseweb="select"] span, [data-baseweb="select"] div {
+  color:var(--input-fg) !important;
+}
+[data-testid="stNumberInputStepDown"], [data-testid="stNumberInputStepUp"] {
+  color:var(--input-fg) !important;
+  background:var(--surface-2) !important;
+  border-color:var(--line) !important;
+}
+
+/* Exercise card internal layout */
 .excard-head{
   display:flex; align-items:flex-start; gap:14px;
   min-height:88px; margin-bottom:6px; color:var(--fg);
@@ -84,7 +170,15 @@ h1, h2, h3, h4 {
   display:flex; align-items:center; gap:8px; margin:3px 0 5px;
 }
 
-/* exercise grid — spread cards across the page */
+/* Section divider separating workout cards from bottom utilities */
+.section-divider{
+  display:flex; align-items:center; gap:14px; margin:22px 0 14px;
+  color:var(--faint); font-size:12px; font-weight:800; text-transform:uppercase; letter-spacing:.09em;
+}
+.section-divider::before, .section-divider::after{
+  content:""; flex:1; height:1px; background:var(--line);
+}
+
 .exgrid{ display:grid; grid-template-columns:repeat(auto-fill,minmax(300px,1fr)); gap:11px; margin-top:2px; }
 .exrow{ display:flex; align-items:center; gap:13px; background:var(--surface); border:1px solid var(--line);
   border-radius:20px; padding:14px 16px; box-shadow:var(--shadow); color:var(--fg); }
@@ -96,7 +190,7 @@ h1, h2, h3, h4 {
 
 .counter{ display:flex; align-items:center; gap:18px; background:
   radial-gradient(120% 140% at 0% 0%, color-mix(in srgb,var(--blue) 26%,transparent), transparent 58%),
-  linear-gradient(160deg, var(--surface), var(--surface-2)); border:1px solid color-mix(in srgb,var(--blue) 32%,var(--line));
+  linear-gradient(160deg, var(--surface), var(--surface-2)); border:1px solid color-mix(in srgb,var(--blue) 35%,var(--line));
   border-radius:22px; padding:18px 22px; margin-bottom:12px; flex-wrap:wrap; box-shadow:var(--shadow); color:var(--fg); }
 .counter .big{ font-family:"Nunito"; font-weight:900; font-size:46px; line-height:.9; color:var(--fg) !important; }
 .counter .big small{ font-size:16px; color:var(--muted) !important; font-weight:800; }
@@ -161,18 +255,18 @@ h1, h2, h3, h4 {
 .gh-scale{ display:flex; align-items:center; gap:4px; font-size:11.5px; color:var(--muted); font-weight:600; }
 .gh-scale i{ width:11px; height:11px; border-radius:2.5px; display:inline-block; outline:1px solid rgba(128,128,128,.12); }
 
-/* Modern Weekly, Monthly & 12-Week Strips */
+/* Weekly, Monthly & Calendar Strips */
 .wk-strip{ display:grid; grid-template-columns:repeat(7,1fr); gap:8px; margin-top:10px; }
 .wk-day{ background:var(--surface-2); border:1px solid var(--line); border-radius:14px; padding:10px 6px; text-align:center; color:var(--fg); }
 .wk-day.today{ border-color:var(--blue); box-shadow:0 0 0 1px color-mix(in srgb,var(--blue) 45%,transparent); }
 .wk-day.done{ background:color-mix(in srgb,var(--green) 14%,var(--surface-2)); border-color:color-mix(in srgb,var(--green) 45%,var(--line)); }
 
 .mo-grid{ display:grid; grid-template-columns:repeat(7,1fr); gap:6px; margin-top:10px; }
-.mo-cell{ background:var(--surface-2); border:1px solid var(--line); border-radius:11px; padding:7px 6px; text-align:center; font-size:11.5px; color:var(--fg); }
+.mo-cell{ background:var(--surface-2); border:1px solid var(--line); border-radius:11px; padding:8px 6px; text-align:center; font-size:11.5px; color:var(--fg); }
 .mo-cell.today{ border-color:var(--blue); box-shadow:0 0 0 1px var(--blue); }
 .mo-cell.done{ background:color-mix(in srgb,var(--green) 16%,var(--surface-2)); border-color:color-mix(in srgb,var(--green) 45%,var(--line)); }
 
-/* Streamlit Widget Contrast Fixes for Both Dark & Light Themes */
+/* Streamlit Button & Expander Contrast */
 .stButton>button{
   border-radius:13px !important; font-weight:700 !important;
   border:1px solid var(--line) !important;
@@ -200,26 +294,6 @@ h1, h2, h3, h4 {
 [data-testid="stExpander"] summary, [data-testid="stExpander"] summary p, [data-testid="stExpander"] summary span {
   color:var(--fg) !important; font-weight:700 !important;
 }
-/* Segmented control, number/text/date inputs, selectboxes & file uploader */
-[data-baseweb="button-group"]{
-  background:var(--surface-2) !important; padding:3px !important; border-radius:12px !important; border:1px solid var(--line) !important;
-}
-[data-baseweb="button-group"] button{
-  background:transparent !important; color:var(--muted) !important; border-radius:9px !important; font-weight:700 !important;
-}
-[data-baseweb="button-group"] button[aria-checked="true"],
-[data-baseweb="button-group"] button[aria-pressed="true"]{
-  background:var(--blue) !important; color:#ffffff !important;
-}
-[data-baseweb="input"], [data-baseweb="base-input"], [data-baseweb="select"] > div {
-  background:var(--surface-2) !important; color:var(--fg) !important; border-color:var(--line) !important; border-radius:11px !important;
-}
-[data-baseweb="input"] input, [data-baseweb="select"] span, [data-baseweb="select"] div {
-  color:var(--fg) !important;
-}
-[data-testid="stNumberInputStepDown"], [data-testid="stNumberInputStepUp"] {
-  color:var(--fg) !important; background:var(--surface) !important;
-}
 [data-testid="stFileUploader"] section {
   background:var(--surface) !important; border:1px dashed var(--line) !important; border-radius:16px !important; color:var(--fg) !important;
 }
@@ -230,12 +304,13 @@ h1, h2, h3, h4 {
   color:var(--muted) !important;
 }
 hr{ border-color:var(--line); }
+</style>
 """
 
 
-def inject(theme: str = "dark"):
-    palette = _PALETTES.get(theme, _PALETTES["dark"])
-    st.markdown(f"<style>:root{{{palette}}}\n{CSS_BODY}</style>", unsafe_allow_html=True)
+def inject(theme: str | None = None):
+    """Inject CSS with automatic media queries for Dark/Light mode based on viewer device."""
+    st.markdown(CSS, unsafe_allow_html=True)
 
 
 def ring_svg(pct: float, color: str, size: int = 54) -> str:
@@ -317,7 +392,6 @@ def github_heatmap(
                 break
         m = m_date.month
         if m != last_month and (w - last_col >= 3):
-            # Span 3 columns so 3-letter month names (Kas, Ara, Oca) never wrap onto two lines
             span_end = min(weeks + 1, w + 4)
             month_spans.append(f'<span style="grid-column:{w + 1} / {span_end}">{MON_TR[m - 1]}</span>')
             last_month = m

@@ -1,9 +1,13 @@
 import datetime as dt
+import pathlib
+import tempfile
 import pandas as pd
 from lib import store, ui, insight, nutrition
 
 
-def test_sqlite_roundtrip_and_session_hydration(tmp_path):
+def test_sqlite_roundtrip_and_session_hydration(tmp_path=None):
+    if tmp_path is None:
+        tmp_path = pathlib.Path(tempfile.mkdtemp())
     db = tmp_path / "test_fitness.db"
     session1 = {
         "body": {"birth": "1992-03-12", "height": 178, "sex": "male", "activity": "light", "deficit": 500, "kcal_goal": 2100, "protein_mode": "adjusted"},
