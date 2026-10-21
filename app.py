@@ -12,7 +12,7 @@ import plotly.graph_objects as go
 
 from lib import data, nutrition, bodymap, ui, program as P, metrics, insight, sheets, cronometer
 
-st.set_page_config(page_title="Fitness", page_icon="💪", layout="centered", initial_sidebar_state="collapsed")
+st.set_page_config(page_title="Fitness", page_icon="💪", layout="wide", initial_sidebar_state="collapsed")
 ui.inject()
 
 # ---------------- state ----------------
@@ -20,8 +20,12 @@ S = st.session_state
 S.setdefault("page", "home")
 # Body stats drive the targets. Age is an editable assumption (not in the data); everything else
 # we know. Protein is fixed at a muscle-preservation 1.8 g/kg; calories = TDEE − deficit.
-S.setdefault("body", {"birth": "1992-03-12", "height": 178, "sex": "male", "activity": "light", "deficit": 500})
+S.setdefault("body", {"birth": "1992-03-12", "height": 178, "sex": "male", "activity": "light",
+                      "deficit": 500, "kcal_goal": 1900})
 PROTEIN_PER_KG = 1.8
+PROGRAM_WEEKS = 12          # the plan runs as a 12-week block from the baseline
+PADEL_TARGET = 2           # planned padel days/week (actual can exceed it)
+STRENGTH_TARGET = 3        # planned strength sessions/week (Üst A / Alt A / Üst B)
 S.setdefault("weights", [{"date": "2026-10-12", "w": 101.1}, {"date": "2026-10-16", "w": 101.1}, {"date": "2026-10-19", "w": 100.5}])
 S.setdefault("workouts", [])          # [{date, key, name, muscles:(primary,secondary)}]
 S.setdefault("padel", [])             # [iso date]
@@ -186,6 +190,54 @@ def cardio_summary(days: int):
     }
 
 
+def program_progress():
+    """Where we are in the 12-week block from the 2026-10-31 baseline.
+    Before the baseline: {started:False, days_to_start:n}. After: week 1..12 + a 0..1 pct."""
+    d = (TODAY - START_DATE).days
+    if d < 0:
+        return {"started": False, "week": 0, "pct": 0.0, "days_to_start": -d}
+    week = min(PROGRAM_WEEKS, d // 7 + 1)
+    return {"started": True, "week": week, "pct": min(1.0, (d + 1) / (PROGRAM_WEEKS * 7)), "days_to_start": 0}
+
+
+def strength_dates_all():
+    """Every date with a strength session: in-app logged workouts + Cronometer strength-category
+    sessions (Apple Health 'Functional/Traditional Strength Training')."""
+    s = {w["date"] for w in S["workouts"]}
+    cx = cron_ex_df()
+    if not cx.empty and "cat" in cx:
+        s |= set(cx[cx["cat"] == "strength"]["date"])
+    return s
+
+
+def week_counts(week_iso: str):
+    """(strength_sessions, padel_sessions) for the 7-day week starting week_iso. Actual counts,
+    uncapped — play padel 4× and it reads 4 even though the target is 2."""
+    end = (pd.Timestamp(week_iso) + pd.Timedelta(days=6)).strftime("%Y-%m-%d")
+    win = lambda ds: sum(1 for d in ds if week_iso <= d <= end)
+    return win(strength_dates_all()), win(padel_dates_all())
+
+
+def program_week_grid(week_start: dt.date):
+    """Per-day plan vs actual for a week: [{dow, day, name, color, kind, planned, done}]. 'done'
+    means a matching session landed that day (strength session for lift days, a padel session for
+    padel days)."""
+    strv, padv = strength_dates_all(), padel_dates_all()
+    grid = []
+    for i in range(7):
+        d = week_start + dt.timedelta(days=i)
+        iso = d.strftime("%Y-%m-%d")
+        day = P.DAYS[i]
+        is_padel = "padel" in day["key"].lower()
+        is_lift = day["focus"] in ("upper", "lower", "full")
+        kind = "padel" if is_padel else "lift" if is_lift else day["focus"]
+        color = "var(--teal)" if is_padel else P.FOCUS_COLOR.get(day["focus"], "var(--line)")
+        done = (iso in strv) if is_lift else (iso in padv) if is_padel else False
+        grid.append({"dow": DOW[i], "day": d.day, "name": day["name"], "color": color,
+                     "kind": kind, "planned": is_lift or is_padel, "done": done})
+    return grid
+
+
 def navigate(page):
     S["page"] = page
 
@@ -200,14 +252,17 @@ def age_from(birth: str) -> int:
 
 def compute_targets():
     """Targets derived from the latest bodyweight + body stats, so they track as weight changes.
-    Protein at 1.8 g/kg (muscle preservation in a deficit); calories = TDEE − deficit, floor 1500."""
+    Protein at 1.8 g/kg (muscle preservation in a deficit). Calories follow a manual goal when set
+    (kcal_goal), otherwise TDEE − deficit. We also keep the implied daily deficit + weekly loss."""
     w = latest_weight()[0] or 100.0
     b = S["body"]
     age = age_from(b["birth"]) if b.get("birth") else b.get("age", 35)
     t = nutrition.estimate_targets(w, b["height"], age, b["sex"], b["activity"], b["deficit"],
-                                   floor=1500, protein_per_kg=PROTEIN_PER_KG)
+                                   floor=1500, protein_per_kg=PROTEIN_PER_KG, kcal=b.get("kcal_goal"))
     S["targets"] = {k: t[k] for k in ("kcal", "protein", "carbs", "fat")}
     S["tdee"] = t["tdee"]
+    S["deficit_now"] = t["deficit"]
+    S["weekly_loss"] = nutrition.weekly_loss(t["deficit"])
 
 
 compute_targets()
@@ -234,82 +289,109 @@ def _coach_note(payload_key: str, has_key: bool):
 
 
 # ---------------- pages ----------------
+def _counter_card():
+    """Top-of-Home hero: a countdown to the 2026-10-31 baseline, then Week X/12 + this week's
+    plan dots once the block has started."""
+    pp = program_progress()
+    if not pp["started"]:
+        n = pp["days_to_start"]
+        return (
+            "<div class='counter'>"
+            f"<div><div class='big'>{n}<small> gün</small></div><div class='lbl'>Başlangıca · 31 Ekim</div></div>"
+            "<div style='flex:1;min-width:140px'><div style='font-weight:800;font-size:15px'>12 haftalık program</div>"
+            "<div class='muted' style='font-size:13px;margin-top:3px'>Baz ağırlık ve seri 31 Ekim'de başlıyor; o güne kadar hazırlık.</div></div>"
+            "</div>"
+        )
+    grid = program_week_grid(WEEK_START)
+    dots = "".join(f"<i class='{'on' if g['done'] else ''}'></i>" for g in grid if g["planned"])
+    pct = round(pp["pct"] * 100)
+    return (
+        "<div class='counter'>"
+        f"<div><div class='big'>{pp['week']}<small>/{PROGRAM_WEEKS}</small></div><div class='lbl'>Hafta · 12 haftalık program</div></div>"
+        "<div style='flex:1;min-width:160px'>"
+        f"<div style='font-weight:800;font-size:14px'>Bu hafta planı</div><div class='weekdots'>{dots}</div>"
+        f"<div style='height:7px;border-radius:5px;background:var(--surface-2);margin-top:10px;overflow:hidden'>"
+        f"<div style='height:100%;width:{pct}%;background:var(--blue);border-radius:5px'></div></div></div>"
+        "</div>"
+    )
+
+
 def page_home():
     st.markdown(
-        f"<h1 style='margin:0 0 2px;font-size:27px'>{GREET}, Anıl</h1>"
-        f"<div style='color:var(--muted);font-size:13.5px;margin-bottom:16px'>{DOW_LONG[TODAY.weekday()]} · {TODAY.day} {MON[TODAY.month-1]}</div>",
+        f"<h1 style='margin:0 0 2px;font-size:28px'>{GREET}, Anıl</h1>"
+        f"<div style='color:var(--muted);font-size:13.5px;margin-bottom:14px'>{DOW_LONG[TODAY.weekday()]} · {TODAY.day} {MON[TODAY.month-1]}</div>",
         unsafe_allow_html=True,
     )
+    st.markdown(_counter_card(), unsafe_allow_html=True)
+
     nt = nutrition_today()
     prot = int(nt["protein"]) if nt else 0
     kcal = int(nt["kcal"]) if nt else 0
     t = S["targets"]
-    wk = len(workouts_week())
-    pad = len(padel_week())
+    strv, pad = week_counts(WEEK_ISO)
 
-    # four rings = the week at a glance (antrenman / padel / protein / kalori)
-    pad_t = 2  # planned padel days/week
-    r1 = ui.ring(wk / 3 if wk else 0, "var(--blue)", f"{wk}<small>/3</small>", "Antrenman", 44)
-    r2 = ui.ring(pad / pad_t if pad_t else 0, "var(--teal)", f"{pad}<small>/{pad_t}</small>", "Padel", 44)
-    r3 = ui.ring(prot / t["protein"] if t["protein"] else 0, "var(--orange)", f"{prot}<small>/{t['protein']}</small>", "Protein", 44)
-    r4 = ui.ring(kcal / t["kcal"] if t["kcal"] else 0, "var(--green)", f"{kcal}<small>/{t['kcal']}</small>", "Kalori", 44)
+    # four rings = the week at a glance (antrenman / padel / protein / kalori). Padel shows the
+    # real count against a target of 2 but isn't capped — 4 played reads 4/2.
+    r1 = ui.ring(strv / STRENGTH_TARGET if strv else 0, "var(--blue)", f"{strv}<small>/{STRENGTH_TARGET}</small>", "Antrenman", 50)
+    r2 = ui.ring(pad / PADEL_TARGET if PADEL_TARGET else 0, "var(--teal)", f"{pad}<small>/{PADEL_TARGET}</small>", "Padel", 50)
+    r3 = ui.ring(prot / t["protein"] if t["protein"] else 0, "var(--orange)", f"{prot}<small>/{t['protein']}</small>", "Protein", 50)
+    r4 = ui.ring(kcal / t["kcal"] if t["kcal"] else 0, "var(--green)", f"{kcal}<small>/{t['kcal']}</small>", "Kalori", 50)
     st.markdown(f"<div class='rings'>{r1}{r2}{r3}{r4}</div>", unsafe_allow_html=True)
 
-    # Apple Health activity (from the Google Sheet) — steps / active kcal / exercise min / distance
-    act = today_activity()
-    if act:
-        st.markdown(
-            "<div class='fcard' style='display:grid;grid-template-columns:repeat(4,1fr);gap:6px;text-align:center;padding:13px 8px;margin-top:2px'>"
-            f"<div><div style='font-family:Nunito;font-weight:900;font-size:17px'>{int(act['steps'])}</div><div class='muted' style='font-size:10.5px'>adım</div></div>"
-            f"<div><div style='font-family:Nunito;font-weight:900;font-size:17px'>{int(act['active_kcal'])}</div><div class='muted' style='font-size:10.5px'>aktif kcal</div></div>"
-            f"<div><div style='font-family:Nunito;font-weight:900;font-size:17px'>{int(act['exercise_min'])}</div><div class='muted' style='font-size:10.5px'>egz. dk</div></div>"
-            f"<div><div style='font-family:Nunito;font-weight:900;font-size:17px'>{act['distance_km']:.1f}</div><div class='muted' style='font-size:10.5px'>km</div></div>"
-            "</div>",
-            unsafe_allow_html=True,
-        )
+    # desktop: today's workout on the left, weight + activity on the right
+    left, right = st.columns([1.35, 1], gap="medium")
 
-    # today hero from the program
-    day = P.day_for(TODAY.weekday())
-    color = P.FOCUS_COLOR[day["focus"]]
-    st.markdown("<p class='eyebrow' style='margin-top:14px'>Bugün</p>", unsafe_allow_html=True)
-    if day["exercises"]:
-        load = P.day_load(day)
-        chips = "".join(f"<span class='chip'>{g}</span>" for g in P.day_groups(day))
-        st.markdown(
-            f"<div class='hero' style='background:radial-gradient(130% 90% at 100% 0%, color-mix(in srgb,{color} 30%,transparent), transparent 60%), linear-gradient(165deg, color-mix(in srgb,{color} 14%,var(--surface)), var(--surface) 78%); border:1px solid color-mix(in srgb,{color} 28%,var(--line))'>"
-            f"<div class='kick' style='color:{color}'>● {day['tag']}</div>"
-            f"<h2>{day['name']}</h2><div class='chiprow'>{chips}</div>"
-            f"<div style='color:var(--muted);font-size:13px;margin-top:8px'>{load['exercises']} egzersiz · {load['sets']} set · ~{load['minutes']} dk</div></div>",
-            unsafe_allow_html=True,
-        )
-        st.button("▶ Antrenmana git", type="primary", use_container_width=True, on_click=navigate, args=("workout",))
-    else:
-        st.markdown(
-            f"<div class='hero' style='background:linear-gradient(165deg, color-mix(in srgb,{color} 12%,var(--surface)), var(--surface) 80%);border:1px solid var(--line)'>"
-            f"<div class='kick' style='color:{color}'>● {day['tag'] or 'Bugün'}</div>"
-            f"<h2>{day['name']}</h2><div style='color:var(--muted);font-size:13px;margin-top:6px'>{day.get('note','')}</div></div>",
-            unsafe_allow_html=True,
-        )
-
-    # weight — headline is progress since the 2026-10-31 baseline (countdown until it starts)
-    w, _ = latest_weight()
-    if w is not None:
-        delta, started = progress_since_start()
-        if started:
-            dcls = "good" if delta < 0 else "bad" if delta > 0 else ""
-            note = f"<span class='{dcls}' style='margin-inline-start:auto;font-weight:700;font-size:13px'>{'↓' if delta<0 else '↑' if delta>0 else '–'} {abs(delta):.1f} kg başlangıçtan beri</span>"
+    with left:
+        day = P.day_for(TODAY.weekday())
+        color = P.FOCUS_COLOR[day["focus"]]
+        st.markdown("<p class='eyebrow'>Bugün</p>", unsafe_allow_html=True)
+        if day["exercises"]:
+            load = P.day_load(day)
+            chips = "".join(f"<span class='chip'>{g}</span>" for g in P.day_groups(day))
+            st.markdown(
+                f"<div class='hero' style='background:radial-gradient(130% 90% at 100% 0%, color-mix(in srgb,{color} 30%,transparent), transparent 60%), linear-gradient(165deg, color-mix(in srgb,{color} 14%,var(--surface)), var(--surface) 78%); border:1px solid color-mix(in srgb,{color} 28%,var(--line))'>"
+                f"<div class='kick' style='color:{color}'>● {day['tag']}</div>"
+                f"<h2>{day['name']}</h2><div class='chiprow'>{chips}</div>"
+                f"<div style='color:var(--muted);font-size:13px;margin-top:8px'>{load['exercises']} egzersiz · {load['sets']} set · ~{load['minutes']} dk</div></div>",
+                unsafe_allow_html=True,
+            )
+            st.button("▶ Antrenmana git", type="primary", use_container_width=True, on_click=navigate, args=("workout",))
         else:
-            days_to = (START_DATE - TODAY).days
-            txt = "başlangıç bugün" if days_to <= 0 else f"başlangıca {days_to} gün"
-            note = f"<span style='margin-inline-start:auto;color:var(--faint);font-weight:700;font-size:13px'>{txt}</span>"
-        st.markdown(
-            f"<div class='fcard'><div class='eyebrow'>Vücut ağırlığı</div>"
-            f"<div style='display:flex;align-items:flex-end;gap:10px'>"
-            f"<span style='font-family:Nunito;font-weight:900;font-size:36px;line-height:.95'>{w:.1f}</span>"
-            f"<span style='color:var(--faint);font-weight:700'>kg</span>{note}"
-            f"</div></div>",
-            unsafe_allow_html=True,
-        )
+            st.markdown(
+                f"<div class='hero' style='background:linear-gradient(165deg, color-mix(in srgb,{color} 12%,var(--surface)), var(--surface) 80%);border:1px solid var(--line)'>"
+                f"<div class='kick' style='color:{color}'>● {day['tag'] or 'Bugün'}</div>"
+                f"<h2>{day['name']}</h2><div style='color:var(--muted);font-size:13px;margin-top:6px'>{day.get('note','')}</div></div>",
+                unsafe_allow_html=True,
+            )
+
+    with right:
+        w, _ = latest_weight()
+        if w is not None:
+            delta, started = progress_since_start()
+            if started:
+                dcls = "good" if delta < 0 else "bad" if delta > 0 else ""
+                note = f"<span class='{dcls}' style='margin-inline-start:auto;font-weight:700;font-size:13px'>{'↓' if delta<0 else '↑' if delta>0 else '–'} {abs(delta):.1f} kg başlangıçtan</span>"
+            else:
+                note = "<span style='margin-inline-start:auto;color:var(--faint);font-weight:700;font-size:13px'>baz: 31 Eki</span>"
+            st.markdown(
+                f"<div class='fcard' style='margin-bottom:10px'><div class='eyebrow'>Vücut ağırlığı</div>"
+                f"<div style='display:flex;align-items:flex-end;gap:10px'>"
+                f"<span style='font-family:Nunito;font-weight:900;font-size:36px;line-height:.95'>{w:.1f}</span>"
+                f"<span style='color:var(--faint);font-weight:700'>kg</span>{note}"
+                f"</div></div>",
+                unsafe_allow_html=True,
+            )
+        act = today_activity()
+        if act:
+            st.markdown(
+                "<div class='fcard' style='display:grid;grid-template-columns:repeat(2,1fr);gap:10px;text-align:center;padding:14px 10px'>"
+                f"<div><div style='font-family:Nunito;font-weight:900;font-size:19px'>{int(act['steps'])}</div><div class='muted' style='font-size:11px'>adım</div></div>"
+                f"<div><div style='font-family:Nunito;font-weight:900;font-size:19px'>{int(act['active_kcal'])}</div><div class='muted' style='font-size:11px'>aktif kcal</div></div>"
+                f"<div><div style='font-family:Nunito;font-weight:900;font-size:19px'>{int(act['exercise_min'])}</div><div class='muted' style='font-size:11px'>egz. dk</div></div>"
+                f"<div><div style='font-family:Nunito;font-weight:900;font-size:19px'>{act['distance_km']:.1f}</div><div class='muted' style='font-size:11px'>km</div></div>"
+                "</div>",
+                unsafe_allow_html=True,
+            )
 
 
 def _plan_exercise_box(i, e, color):
@@ -494,6 +576,35 @@ def page_stats():
                                   "good" if (st_ and pd_ < 0) else "bad" if (st_ and pd_ > 0) else ""))(*progress_since_start()),
     ])
     st.markdown(f"<div class='tiles'>{tiles}</div>", unsafe_allow_html=True)
+
+    # ---- program this week: plan vs actual (strength sessions + padel land here) ----
+    strv, padv = week_counts(WEEK_ISO)
+    grid = program_week_grid(WEEK_START)
+    cells = ""
+    for g in grid:
+        if g["kind"] in ("rest", "cardio"):
+            mark = "<span style='color:var(--faint);font-size:16px'>·</span>"
+            pill = "Dinlenme" if g["kind"] == "rest" else "Kardiyo"
+            pc = "var(--faint)"
+        else:
+            mark = (f"<span style='color:{g['color']};font-size:15px'>✓</span>" if g["done"]
+                    else "<span style='color:var(--faint);font-size:15px'>○</span>")
+            pill, pc = g["name"], g["color"]
+        cells += (
+            f"<div style='flex:1;text-align:center'>"
+            f"<div style='font-size:10.5px;color:var(--faint);font-weight:700'>{g['dow']}</div>"
+            f"<div style='font-family:Nunito;font-weight:800;font-size:13px;margin:1px 0 4px'>{g['day']}</div>"
+            f"<div style='font-size:10px;font-weight:700;color:{pc};white-space:nowrap;overflow:hidden;text-overflow:ellipsis'>{pill}</div>"
+            f"<div style='margin-top:3px'>{mark}</div></div>"
+        )
+    st.markdown(
+        f"<div class='fcard'><div class='eyebrow'>Program · bu hafta &nbsp;·&nbsp; "
+        f"<span style='color:var(--blue)'>{strv}/{STRENGTH_TARGET} antrenman</span> &nbsp; "
+        f"<span style='color:var(--teal)'>{padv}/{PADEL_TARGET} padel</span></div>"
+        f"<div style='display:flex;gap:4px'>{cells}</div>"
+        f"<div class='muted' style='font-size:11.5px;margin-top:10px'>✓ = o gün eşleşen seans var (güç antrenmanı Apple Health'ten Crono'ya düşünce otomatik işaretlenir).</div></div>",
+        unsafe_allow_html=True,
+    )
 
     # ---- evidence-based targets ----
     gkg = metrics.protein_per_kg(avg_prot, weight_kg)
@@ -718,15 +829,30 @@ def page_nutrition():
 
     t = S["targets"]
     wkg = latest_weight()[0] or 100.0
+    wl = S.get("weekly_loss", 0.0)
+    wlpct = (wl / wkg * 100) if wkg else 0
+    manual = S["body"].get("kcal_goal") is not None
+    src = "elle seçtiğin hedef" if manual else f"TDEE ~{S['tdee']} − {S['body']['deficit']} açık"
     st.markdown(
         f"<div class='fcard' style='margin-top:8px'><div class='eyebrow'>Senin için hesaplanan hedef</div>"
-        f"<div style='font-size:13.5px;line-height:1.7'><b>{t['protein']} g protein</b> (~{PROTEIN_PER_KG} g/kg · kas koruma)"
-        f"&nbsp;·&nbsp;<b>{t['kcal']} kcal</b> (TDEE ~{S['tdee']} − {S['body']['deficit']} açık)"
-        f"&nbsp;·&nbsp;{t['carbs']} g karb · {t['fat']} g yağ</div></div>",
+        f"<div style='font-size:13.5px;line-height:1.7'><b>{t['kcal']} kcal/gün</b> ({src})"
+        f"&nbsp;·&nbsp;<b>{t['protein']} g protein</b> (~{PROTEIN_PER_KG} g/kg · kas koruma)"
+        f"&nbsp;·&nbsp;{t['carbs']} g karb · {t['fat']} g yağ</div>"
+        f"<div style='margin-top:8px;font-size:13px'>📉 Tahmini kayıp: <b class='good'>~{wl:.2f} kg/hafta</b> "
+        f"(%{wlpct:.2f}/hafta · günde ~{S.get('deficit_now',0)} kcal açık)</div></div>",
         unsafe_allow_html=True,
     )
-    with st.expander("⚙️ Hedef ayarları (yaş, boy, aktivite, açık)"):
+    with st.expander("⚙️ Hedef ayarları (kalori, yaş, boy, aktivite)"):
         b = S["body"]
+        use_manual = st.checkbox("Kaloriyi elle belirle", value=b.get("kcal_goal") is not None,
+                                 help="Kapalıyken hedef, TDEE − açık ile otomatik hesaplanır.")
+        if use_manual:
+            b["kcal_goal"] = st.number_input("Günlük kalori hedefi (kcal)", 1200, 3500,
+                                             int(b.get("kcal_goal") or 1900), step=50)
+            st.caption(f"~0,5–1%/hafta (bu kiloda ~{wkg*0.005:.1f}–{wkg*0.01:.1f} kg) kas koruma için ideal bant.")
+        else:
+            b["kcal_goal"] = None
+            b["deficit"] = st.number_input("Günlük kalori açığı (TDEE'den)", 0, 1200, int(b.get("deficit") or 500), step=50)
         bd = st.date_input("Doğum tarihi", value=dt.date.fromisoformat(b.get("birth", "1992-03-12")),
                            min_value=dt.date(1940, 1, 1), max_value=TODAY, format="DD.MM.YYYY")
         b["birth"] = bd.isoformat()
@@ -735,7 +861,6 @@ def page_nutrition():
         acts = ["light", "moderate", "high"]
         b["activity"] = st.selectbox("Aktivite düzeyi", acts, index=acts.index(b["activity"]),
                                      format_func=lambda x: {"light": "Az hareketli (masa başı)", "moderate": "Orta", "high": "Yüksek"}[x])
-        b["deficit"] = st.number_input("Günlük kalori açığı", 0, 1000, int(b["deficit"]), step=50)
         st.caption("Protein 1,8 g/kg'de sabit (kas koruma); kilo değiştikçe hedefler otomatik güncellenir. Genel bilgilendirme, tıbbi tavsiye değil.")
 
 

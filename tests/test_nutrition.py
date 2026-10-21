@@ -15,6 +15,20 @@ def test_estimate_targets_floor():
     assert t["kcal"] == 1500
 
 
+def test_estimate_targets_manual_kcal():
+    # a manual calorie goal overrides TDEE − deficit; the implied daily deficit is reported
+    t = n.estimate_targets(100.5, 178, 34, "male", "light", protein_per_kg=1.8, kcal=1900)
+    assert t["kcal"] == 1900
+    assert t["deficit"] == t["tdee"] - 1900
+    assert t["protein"] == 181            # 1.8 * 100.5
+
+
+def test_weekly_loss():
+    assert n.weekly_loss(0) == 0
+    assert n.weekly_loss(500) == round(500 * 7 / 7700, 2)   # ~0.45 kg/week
+    assert 0.7 < n.weekly_loss(833) < 0.8                    # ~0.76 kg/week at a 1900 kcal goal
+
+
 def test_parse_cronometer_keeps_only_total_rows_and_sums_duplicates():
     csv = (
         "Date,Group,Energy (kcal),Protein (g),Carbs (g),Fat (g),Fiber (g)\n"

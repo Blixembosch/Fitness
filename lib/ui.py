@@ -14,7 +14,8 @@ CSS = """
 }
 html, body, [class*="css"], .stMarkdown, p, span, div { font-family:"Hanken Grotesk",system-ui,sans-serif; }
 h1,h2,h3 { font-family:"Nunito",sans-serif !important; letter-spacing:-.02em; }
-.block-container{ padding-top:1.4rem; padding-bottom:5rem; max-width:560px; }
+/* desktop-first: a wide, dense dashboard; Streamlit reflows it on phones automatically */
+.block-container{ padding-top:1.2rem; padding-bottom:3rem; max-width:1120px; }
 #MainMenu, header, footer { visibility:hidden; }
 /* tabs -> app-like segmented, scrollable on phone */
 .stTabs [data-baseweb="tab-list"]{ gap:4px; background:var(--surface-2); padding:4px; border-radius:13px; overflow-x:auto; }
@@ -24,7 +25,18 @@ h1,h2,h3 { font-family:"Nunito",sans-serif !important; letter-spacing:-.02em; }
 
 .fcard{ background:var(--surface); border:1px solid var(--line); border-radius:20px; padding:16px; margin-bottom:12px; }
 .eyebrow{ font-size:11.5px; text-transform:uppercase; letter-spacing:.11em; color:var(--faint); font-weight:800; margin:0 0 10px; }
-.rings{ display:grid; grid-template-columns:repeat(4,1fr); gap:7px; margin-bottom:8px; }
+.rings{ display:grid; grid-template-columns:repeat(4,1fr); gap:10px; margin-bottom:8px; }
+/* a bold start-date / streak counter for the top of Home */
+.counter{ display:flex; align-items:center; gap:18px; background:
+  radial-gradient(120% 140% at 0% 0%, color-mix(in srgb,var(--blue) 24%,transparent), transparent 55%),
+  linear-gradient(160deg, var(--surface), var(--surface-2)); border:1px solid color-mix(in srgb,var(--blue) 24%,var(--line));
+  border-radius:22px; padding:18px 22px; margin-bottom:12px; flex-wrap:wrap; }
+.counter .big{ font-family:"Nunito"; font-weight:900; font-size:46px; line-height:.9; }
+.counter .big small{ font-size:16px; color:var(--faint); font-weight:800; }
+.counter .lbl{ font-size:12px; color:var(--muted); font-weight:700; text-transform:uppercase; letter-spacing:.08em; }
+.weekdots{ display:flex; gap:7px; margin-top:7px; }
+.weekdots i{ width:11px; height:11px; border-radius:50%; background:var(--surface-2); border:1px solid var(--line); }
+.weekdots i.on{ background:var(--green); border-color:var(--green); }
 .ringcard{ background:var(--surface); border:1px solid var(--line); border-radius:17px; padding:12px 3px 10px; text-align:center; }
 .ringcard .v{ font-family:"Nunito"; font-weight:800; font-size:13.5px; margin-top:6px; line-height:1; }
 .ringcard .v small{ color:var(--faint); font-weight:700; font-size:.82em; }
@@ -34,7 +46,7 @@ h1,h2,h3 { font-family:"Nunito",sans-serif !important; letter-spacing:-.02em; }
 .hero h2{ font-size:26px; font-weight:900; margin:8px 0 4px; }
 .chiprow{ display:flex; flex-wrap:wrap; gap:6px; margin:10px 0 2px; }
 .chip{ font-size:12px; font-weight:700; padding:4px 10px; border-radius:999px; background:var(--surface-2); color:var(--muted); }
-.tiles{ display:grid; grid-template-columns:1fr 1fr; gap:11px; }
+.tiles{ display:grid; grid-template-columns:repeat(auto-fit,minmax(148px,1fr)); gap:11px; }
 .tile{ background:var(--surface); border:1px solid var(--line); border-radius:18px; padding:15px; }
 .tile .k{ font-size:11.5px; color:var(--muted); font-weight:700; text-transform:uppercase; letter-spacing:.04em; }
 .tile .v{ font-family:"Nunito"; font-weight:900; font-size:26px; margin-top:7px; line-height:1; }
