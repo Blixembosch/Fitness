@@ -386,11 +386,12 @@ def page_home():
         if day["exercises"]:
             load = P.day_load(day, pextra)
             chips = "".join(f"<span class='chip'>{g}</span>" for g in P.day_groups(day))
+            chips += f"<span class='chip' style='color:var(--green)'>🏃 Eliptik/kürek {phase['ell']} dk</span>"
             st.markdown(
                 f"<div class='hero' style='background:radial-gradient(130% 90% at 100% 0%, color-mix(in srgb,{color} 30%,transparent), transparent 60%), linear-gradient(165deg, color-mix(in srgb,{color} 14%,var(--surface)), var(--surface) 78%); border:1px solid color-mix(in srgb,{color} 28%,var(--line))'>"
                 f"<div class='kick' style='color:{color}'>● {day['tag']} · RPE {phase['rpe']}</div>"
                 f"<h2>{day['name']}</h2><div class='chiprow'>{chips}</div>"
-                f"<div style='color:var(--muted);font-size:13px;margin-top:8px'>{load['exercises']} egzersiz · {load['sets']} set · +{phase['ell']} dk eliptik</div></div>",
+                f"<div style='color:var(--muted);font-size:13px;margin-top:8px'>{load['exercises']} egzersiz · {load['sets']} set · +{phase['ell']} dk eliptik/kürek</div></div>",
                 unsafe_allow_html=True,
             )
             st.button("▶ Antrenmana git", type="primary", use_container_width=True, on_click=navigate, args=("workout",))
@@ -539,7 +540,7 @@ def page_plan():
             f"<div class='hero' style='background:radial-gradient(130% 90% at 100% 0%, color-mix(in srgb,{color} 28%,transparent), transparent 60%), linear-gradient(165deg, color-mix(in srgb,{color} 13%,var(--surface)), var(--surface) 80%);border:1px solid color-mix(in srgb,{color} 26%,var(--line))'>"
             f"<div class='kick' style='color:{color}'>● {day['tag']} · RPE {phase['rpe']}</div><h2>{day['name']}</h2>"
             f"<div class='chiprow'>{chips}</div>"
-            f"<div style='color:var(--muted);font-size:13px;margin-top:8px'>{load['exercises']} egzersiz · {load['sets']} set · +{phase['ell']} dk eliptik · ~{load['minutes']+phase['ell']} dk</div></div>",
+            f"<div style='color:var(--muted);font-size:13px;margin-top:8px'>{load['exercises']} egzersiz · {load['sets']} set · +{phase['ell']} dk eliptik/kürek · ~{load['minutes']+phase['ell']} dk</div></div>",
             unsafe_allow_html=True,
         )
         boxes = "".join(_plan_exercise_box(i, e, color) for i, e in enumerate(P.day_details(day, extra), 1))
@@ -573,11 +574,12 @@ def page_plan():
             "**Hedef:** Wegovy ile hızlı kilo verirken kası korumak. GLP-1'de kaybın bir kısmı yağsız "
             "kütleden olur; bunu **yüksek protein + direnç antrenmanı** ciddi biçimde azaltır.\n\n"
             "**Haftalık yapı (4 seans):** 3 güç günü (Üst A / Alt A / Üst B) üst vücut + core ağırlıklı — "
-            "sırt, göğüs, omuz, karın önde (senin hedef bölgelerin). Her güç günü sonunda **eliptik bitiriş**; "
-            "ayrıca Sal/Per **padel** ve 1 ayrı **kardiyo** günü (kürek/eliptik/bisiklet).\n\n"
+            "sırt, göğüs, omuz, karın önde (senin hedef bölgelerin). Her güç günü **sonunda** 10–15 dk "
+            "**eliptik veya kürek** bitiriş (önce ağırlık → sonra kardiyo); ayrıca Sal/Per **padel** ve 1 ayrı "
+            "**kardiyo** günü (kürek/eliptik/bisiklet).\n\n"
             "**12 haftalık dönemselleştirme (periodization):**\n"
             "- **Hafta 1–4 Temel:** 3 set, RPE 6–7 — teknik ve adaptasyon, eklem/tendon hazırlığı.\n"
-            "- **Hafta 5–8 Gelişim:** 4 set, RPE 7–8 — öncelikli kaslarda hacim; çift ilerleme (önce tekrar, sonra yük).\n"
+            "- **Hafta 5–8 Gelişim:** 4 set, RPE 7–8 — öncelikli kaslarda hacim; tekrar sabit (8/10/12), hedefi RPE'de tutturunca yükü artır.\n"
             "- **Hafta 9–12 Koruma:** 4 set, RPE 8 — büyüyen açıkta yoğunluğu tut; gerekirse 1 hafta deload.\n\n"
             "**Dinamik güncelleme:** Yukarıdaki *Program durumu* kartı her hafta gerçek verinle (kilo kaybı hızı, "
             "antrenman/padel tamamlama, protein) kendini ayarlar — kayıp %1/haftayı aşarsa kaloriyi artırmanı, "
@@ -646,7 +648,7 @@ def page_workout():
     fin = P.lifting_finisher(day, phase["ell"])
     st.markdown(
         f"<div class='muted' style='font-size:13px;margin:2px 0 12px'>{phase['name']} · RPE {phase['rpe']} · "
-        f"{load['exercises']} egzersiz · {load['sets']} set · +{phase['ell']} dk eliptik</div>",
+        f"{load['exercises']} egzersiz · {load['sets']} set · +{phase['ell']} dk eliptik/kürek</div>",
         unsafe_allow_html=True,
     )
     done_iso = TODAY.strftime("%Y-%m-%d")

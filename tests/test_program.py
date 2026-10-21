@@ -83,3 +83,18 @@ def test_lifting_finisher_elliptical_every_lift_day():
     # non-lifting days get no finisher
     rest = next(d for d in P.DAYS if d["focus"] == "rest")
     assert P.lifting_finisher(rest, 10) is None
+
+
+def test_reps_are_net_values():
+    from lib import program as P
+    allowed = {"8", "10", "12"}
+    for d in P.TRAINING_DAYS:
+        for e in d["exercises"]:
+            assert str(e["reps"]) in allowed, f"{e['id']} has non-net reps {e['reps']!r}"
+
+
+def test_finisher_offers_elliptical_or_rower():
+    from lib import program as P
+    fin = P.lifting_finisher(P.TRAINING_DAYS[0], 12)
+    assert "kürek" in fin["name"].lower() and "eliptik" in fin["name"].lower()
+    assert fin["minutes"] == 12

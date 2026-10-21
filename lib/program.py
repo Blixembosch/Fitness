@@ -13,36 +13,36 @@ FOCUS_COLOR = {"upper": "var(--blue)", "lower": "var(--purple)", "cardio": "var(
 DAYS = [
     {"wd": 0, "key": "upperA", "name": "Üst A", "focus": "upper", "tag": "Üst · A", "note": "Göğüs, sırt, omuz, kol",
      "exercises": [
-         {"id": "0289", "sets": 3, "reps": "8–12", "tip": "Göğüs; kontrollü indir, patlayarak it."},
-         {"id": "0314", "sets": 3, "reps": "10–12", "tip": "Üst göğüs; bench ~30°."},
-         {"id": "0293", "sets": 3, "reps": "10–12", "tip": "Sırt; dirseği gövdeye yakın çek, sık."},
-         {"id": "9698", "sets": 3, "reps": "10–12", "tip": "Sırt (göğüs destekli); belini korur, lat'ı sık."},
-         {"id": "0334", "sets": 3, "reps": "12–15", "tip": "Omuz yanı; hafif ağırlık, salınımsız."},
-         {"id": "0294", "sets": 3, "reps": "10–12", "tip": "Biceps; dirsek sabit."},
-         {"id": "3449", "sets": 3, "reps": "20", "tip": "Bel/yan karın; gövdeyi döndür, kontrollü."},
+         {"id": "0289", "sets": 3, "reps": "8", "tip": "Göğüs; kontrollü indir, patlayarak it. Ağır bileşik → 8."},
+         {"id": "0314", "sets": 3, "reps": "10", "tip": "Üst göğüs; bench ~30°."},
+         {"id": "0293", "sets": 3, "reps": "10", "tip": "Sırt; dirseği gövdeye yakın çek, sık."},
+         {"id": "9698", "sets": 3, "reps": "10", "tip": "Sırt (göğüs destekli); belini korur, lat'ı sık."},
+         {"id": "0334", "sets": 3, "reps": "12", "tip": "Omuz yanı; hafif ağırlık, salınımsız."},
+         {"id": "0294", "sets": 3, "reps": "10", "tip": "Biceps; dirsek sabit."},
+         {"id": "3449", "sets": 3, "reps": "12", "tip": "Bel/yan karın; her yöne, kontrollü."},
      ]},
     {"wd": 1, "key": "padelTue", "name": "Padel", "focus": "cardio", "tag": "Padel",
      "note": "Ders 20:00 + maç · kardiyo", "exercises": []},
     {"wd": 2, "key": "lowerA", "name": "Alt A", "focus": "lower", "tag": "Alt · A", "note": "Bacak, kalça, karın",
      "exercises": [
-         {"id": "1760", "sets": 3, "reps": "10–12", "tip": "Ön bacak; göğüste dambıl, derine çök."},
-         {"id": "1459", "sets": 3, "reps": "10–12", "tip": "Arka bacak/kalça; sırt düz, kalçayı geri it."},
-         {"id": "2290", "sets": 3, "reps": "10–12", "tip": "Tek bacak; arka ayak bench'te."},
-         {"id": "0417", "sets": 3, "reps": "15–20", "tip": "Baldır; tepede 1 sn dur."},
-         {"id": "1163", "sets": 3, "reps": "12–15", "tip": "Alt karın; bel yere yapışık."},
-         {"id": "4624", "sets": 3, "reps": "15", "tip": "Karın; nefes vererek sık."},
+         {"id": "1760", "sets": 3, "reps": "10", "tip": "Ön bacak; göğüste dambıl, derine çök."},
+         {"id": "1459", "sets": 3, "reps": "10", "tip": "Arka bacak/kalça; sırt düz, kalçayı geri it."},
+         {"id": "2290", "sets": 3, "reps": "10", "tip": "Tek bacak; arka ayak bench'te."},
+         {"id": "0417", "sets": 3, "reps": "12", "tip": "Baldır; tepede 1 sn dur, tam uzat."},
+         {"id": "1163", "sets": 3, "reps": "12", "tip": "Alt karın; bel yere yapışık."},
+         {"id": "4624", "sets": 3, "reps": "12", "tip": "Karın; nefes vererek sık."},
      ]},
     {"wd": 3, "key": "padelThu", "name": "Padel", "focus": "cardio", "tag": "Padel",
      "note": "Olursa · kardiyo", "exercises": []},
     {"wd": 4, "key": "upperB", "name": "Üst B", "focus": "upper", "tag": "Üst · B", "note": "Omuz, sırt, göğüs, kol",
      "exercises": [
-         {"id": "0405", "sets": 3, "reps": "8–12", "tip": "Omuz; bench dik, çekirdek sıkı."},
-         {"id": "0293", "sets": 3, "reps": "10–12", "tip": "Sırt; kürek kemiklerini birleştir."},
-         {"id": "2982", "sets": 3, "reps": "10–12", "tip": "Göğüs; yerde, dirsek 45°."},
-         {"id": "0378", "sets": 3, "reps": "12–15", "tip": "Arka omuz; gövde öne eğik."},
-         {"id": "0313", "sets": 3, "reps": "10–12", "tip": "Ön kol/biceps; nötr tutuş."},
-         {"id": "0430", "sets": 3, "reps": "12–15", "tip": "Triceps; tam aç."},
-         {"id": "0407", "sets": 3, "reps": "15/yön", "tip": "Bel/yan karın; tek dambıl, yana eğil."},
+         {"id": "0405", "sets": 3, "reps": "8", "tip": "Omuz; bench dik, çekirdek sıkı. Ağır bileşik → 8."},
+         {"id": "0293", "sets": 3, "reps": "10", "tip": "Sırt; kürek kemiklerini birleştir."},
+         {"id": "2982", "sets": 3, "reps": "10", "tip": "Göğüs; yerde, dirsek 45°."},
+         {"id": "0378", "sets": 3, "reps": "12", "tip": "Arka omuz; gövde öne eğik."},
+         {"id": "0313", "sets": 3, "reps": "10", "tip": "Ön kol/biceps; nötr tutuş."},
+         {"id": "0430", "sets": 3, "reps": "12", "tip": "Triceps; tam aç."},
+         {"id": "0407", "sets": 3, "reps": "12", "tip": "Bel/yan karın; tek dambıl, her yöne yana eğil."},
      ]},
     {"wd": 5, "key": "cardio", "name": "Kardiyo", "focus": "cardio", "tag": "Kardiyo",
      "note": "Düşük etkili kardiyo — birini seç ya da kürek + eliptiği birleştir", "exercises": [],
@@ -70,7 +70,7 @@ PHASES = [
     {"weeks": (1, 4), "key": "temel", "name": "Temel · Adaptasyon", "base_sets": 3, "rpe": "6–7", "ell": 10,
      "note": "Hareketleri oturt, eklem/tendon adaptasyonu. GLP-1'de enerji düşebilir — teknik ve protein öncelik, yükü zorlamadan ilerlet."},
     {"weeks": (5, 8), "key": "gelisim", "name": "Gelişim · Yüklenme", "base_sets": 4, "rpe": "7–8", "ell": 12,
-     "note": "Öncelikli kaslarda (sırt/göğüs/omuz/karın) hacmi artır; her lift'te +1 set. Yük veya tekrarı kademeli ilerlet (çift ilerleme)."},
+     "note": "Öncelikli kaslarda (sırt/göğüs/omuz/karın) hacmi artır; her lift'te +1 set. Tekrar sabit (8/10/12) — hedef tekrarı RPE'de tamamlayınca yükü artır."},
     {"weeks": (9, 12), "key": "koruma", "name": "Koruma · Yoğunluk", "base_sets": 4, "rpe": "8", "ell": 15,
      "note": "Açık büyüdükçe kası koru: yoğunluğu tut, yük bırakma. Yorgunluk birikirse 1 hafta deload (set/yoğunluk −%40). Uyku + protein kritik."},
 ]
@@ -92,10 +92,13 @@ def phase_extra_sets(phase: dict) -> int:
 
 
 def lifting_finisher(day: dict, minutes: int) -> dict | None:
-    """Elliptical finisher appended to every lifting day (low-impact fat-loss + recovery)."""
+    """Cardio finisher appended to every lifting day — elliptical OR rower, user's pick (both at
+    home). Done AFTER the lifts on purpose: strength first for quality + muscle sparing, then
+    low-intensity cardio for fat oxidation and recovery."""
     if day.get("focus") in ("upper", "lower", "full"):
-        return {"name": "Eliptik (bitiriş)", "type": "Eliptik", "minutes": int(minutes),
-                "tip": f"Antrenman sonu {int(minutes)} dk orta tempo — yağ yakımı ve toparlanma; eklem dostu."}
+        return {"name": "Eliptik veya kürek (bitiriş)", "type": "Eliptik", "minutes": int(minutes),
+                "tip": f"Antrenman SONUNDA {int(minutes)} dk orta tempo — eliptik ya da kürek (su küreği). "
+                       "Ağırlıktan sonra: yağ yakımı + toparlanma, kaldırış performansını düşürmez."}
     return None
 
 
