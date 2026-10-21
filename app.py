@@ -384,27 +384,45 @@ def page_home():
         act = today_activity()
         if act:
             st.markdown(
-                "<div class='fcard' style='display:grid;grid-template-columns:repeat(2,1fr);gap:10px;text-align:center;padding:14px 10px'>"
-                f"<div><div style='font-family:Nunito;font-weight:900;font-size:19px'>{int(act['steps'])}</div><div class='muted' style='font-size:11px'>adım</div></div>"
-                f"<div><div style='font-family:Nunito;font-weight:900;font-size:19px'>{int(act['active_kcal'])}</div><div class='muted' style='font-size:11px'>aktif kcal</div></div>"
-                f"<div><div style='font-family:Nunito;font-weight:900;font-size:19px'>{int(act['exercise_min'])}</div><div class='muted' style='font-size:11px'>egz. dk</div></div>"
-                f"<div><div style='font-family:Nunito;font-weight:900;font-size:19px'>{act['distance_km']:.1f}</div><div class='muted' style='font-size:11px'>km</div></div>"
-                "</div>",
+                "<div class='fcard' style='margin-bottom:10px'><div class='eyebrow'>Aktivite · son gün</div>"
+                "<div style='display:grid;grid-template-columns:repeat(2,1fr);gap:12px;text-align:center'>"
+                f"<div><div style='font-family:Nunito;font-weight:900;font-size:21px'>{int(act['steps'])}</div><div class='muted' style='font-size:11px'>adım</div></div>"
+                f"<div><div style='font-family:Nunito;font-weight:900;font-size:21px'>{int(act['active_kcal'])}</div><div class='muted' style='font-size:11px'>aktif kcal</div></div>"
+                f"<div><div style='font-family:Nunito;font-weight:900;font-size:21px'>{int(act['exercise_min'])}</div><div class='muted' style='font-size:11px'>egz. dk</div></div>"
+                f"<div><div style='font-family:Nunito;font-weight:900;font-size:21px'>{act['distance_km']:.1f}</div><div class='muted' style='font-size:11px'>km</div></div>"
+                "</div></div>",
                 unsafe_allow_html=True,
             )
+        else:
+            st.markdown(
+                "<div class='fcard' style='border-style:dashed'><div class='eyebrow'>Aktivite</div>"
+                "<div class='muted' style='font-size:13px;line-height:1.6'>Cronometer verini (exercises · dailysummary · biometrics) "
+                "<b>Beslenme</b> sekmesinden yükle; adım, aktif kcal, egzersiz dakikası ve mesafe burada görünür.</div></div>",
+                unsafe_allow_html=True,
+            )
+        # weekly snapshot so the column stays balanced next to the hero
+        strv, pad = week_counts(WEEK_ISO)
+        st.markdown(
+            "<div class='fcard' style='margin-bottom:0'><div class='eyebrow'>Bu hafta</div>"
+            "<div style='display:grid;grid-template-columns:1fr 1fr;gap:12px;text-align:center'>"
+            f"<div><div style='font-family:Nunito;font-weight:900;font-size:21px;color:var(--blue)'>{strv}<small style='color:var(--faint);font-size:14px'>/{STRENGTH_TARGET}</small></div><div class='muted' style='font-size:11px'>antrenman</div></div>"
+            f"<div><div style='font-family:Nunito;font-weight:900;font-size:21px;color:var(--teal)'>{pad}<small style='color:var(--faint);font-size:14px'>/{PADEL_TARGET}</small></div><div class='muted' style='font-size:11px'>padel</div></div>"
+            "</div></div>",
+            unsafe_allow_html=True,
+        )
 
 
 def _plan_exercise_box(i, e, color):
-    """Plan overview box: round number badge + move + muscle chips + sets×reps."""
+    """Plan overview card (HTML only, so it tiles in a responsive grid): round number badge +
+    move + muscle chips + sets×reps."""
     chips = "".join(f"<span class='chip' style='font-size:10.5px;padding:3px 8px'>{data.tr_muscle(m)}</span>" for m in e["primary"][:3])
-    st.markdown(
-        f"<div class='fcard' style='display:flex;align-items:center;gap:12px;padding:11px 14px;margin-bottom:8px'>"
+    return (
+        f"<div class='exrow'>"
         f"<div style='width:34px;height:34px;border-radius:50%;background:color-mix(in srgb,{color} 20%,var(--surface-2));color:{color};"
         f"font-family:Nunito;font-weight:800;font-size:14px;display:flex;align-items:center;justify-content:center;flex-shrink:0'>{i}</div>"
         f"<div style='flex:1;min-width:0'><div style='font-weight:700;font-size:14px'>{e['name']}</div>"
         f"<div class='chiprow' style='margin-top:4px'>{chips}</div></div>"
-        f"<div style='font-family:Nunito;font-weight:800;color:{color};font-size:15px;flex-shrink:0'>{e['sets']}×{e['reps']}</div></div>",
-        unsafe_allow_html=True,
+        f"<div style='font-family:Nunito;font-weight:800;color:{color};font-size:15px;flex-shrink:0'>{e['sets']}×{e['reps']}</div></div>"
     )
 
 
@@ -452,10 +470,12 @@ def page_plan():
             f"<div style='color:var(--muted);font-size:13px;margin-top:8px'>{load['exercises']} egzersiz · {load['sets']} set · ~{load['minutes']} dk</div></div>",
             unsafe_allow_html=True,
         )
-        for i, e in enumerate(P.day_details(day), 1):
-            _plan_exercise_box(i, e, color)
+        boxes = "".join(_plan_exercise_box(i, e, color) for i, e in enumerate(P.day_details(day), 1))
+        st.markdown(f"<div class='exgrid'>{boxes}</div>", unsafe_allow_html=True)
         if sel == TODAY.weekday():
-            st.button("▶ Antrenmana git", type="primary", use_container_width=True, on_click=navigate, args=("workout",))
+            st.markdown("<div style='height:8px'></div>", unsafe_allow_html=True)
+            c = st.columns([1, 1, 1])[0]
+            c.button("▶ Antrenmana git", type="primary", use_container_width=True, on_click=navigate, args=("workout",))
     else:
         st.markdown(
             f"<div class='hero' style='background:linear-gradient(165deg, color-mix(in srgb,{color} 12%,var(--surface)), var(--surface) 80%);border:1px solid var(--line)'>"
@@ -527,8 +547,12 @@ def page_workout():
         f"<div style='font-family:Nunito;font-weight:800;font-size:13px'>{done_sets}/{load['sets']} set</div></div>",
         unsafe_allow_html=True,
     )
-    for i, e in enumerate(P.day_details(day), 1):
-        _exercise_box(i, e, color, day["key"], done_iso)
+    details = P.day_details(day)
+    for row in range(0, len(details), 2):
+        cols = st.columns(2, gap="medium")
+        for col, (i, e) in zip(cols, enumerate(details[row:row + 2], row + 1)):
+            with col:
+                _exercise_box(i, e, color, day["key"], done_iso)
 
     already = any(w["date"] == done_iso and w.get("key") == day["key"] for w in S["workouts"])
     if already:
@@ -873,10 +897,10 @@ PAGES = {"home": page_home, "plan": page_plan, "workout": page_workout, "stats":
 cols = st.columns(5)
 for col, (key, icon) in zip(cols, NAV):
     with col:
-        st.button(icon, key=f"nav_{key}", use_container_width=True,
+        st.button(f"{icon}  {LABEL[key]}", key=f"nav_{key}", use_container_width=True,
                   type="primary" if S["page"] == key else "secondary",
                   on_click=navigate, args=(key,))
-st.markdown(f"<div style='color:var(--faint);font-size:11px;margin:1px 0 10px;padding-inline-start:2px'>{LABEL[S['page']]}</div>", unsafe_allow_html=True)
+st.markdown("<div style='height:6px'></div>", unsafe_allow_html=True)
 
 PAGES[S["page"]]()
 st.caption("Tasarım önizlemesi · program sana özel · veriler şimdilik oturum içinde")

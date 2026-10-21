@@ -6,17 +6,34 @@ import streamlit as st
 CSS = """
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@700;800;900&family=Hanken+Grotesk:wght@400;500;600;700&display=swap');
+/* dark is the default palette; light is applied automatically when the viewer's OS/browser
+   is in light mode (prefers-color-scheme). Every surface/text uses these tokens so both flip together. */
 :root{
   --bg:#070809; --surface:#14161d; --surface-2:#1c1f28; --line:rgba(255,255,255,.08);
   --fg:#f3f5fa; --muted:#9aa1ae; --faint:#6b7280;
   --blue:#0a84ff; --purple:#bf5af2; --orange:#ff9f0a; --green:#30d158; --teal:#40c8e0; --red:#ff6961;
   --track:#2a2e3a; --map1:#1f4e85; --map2:#1f6fd0; --map3:#0a84ff;
+  --shadow:0 1px 3px rgba(0,0,0,.4);
+}
+@media (prefers-color-scheme: light){
+  :root{
+    --bg:#f5f7fb; --surface:#ffffff; --surface-2:#eef1f7; --line:rgba(12,18,30,.10);
+    --fg:#0d1320; --muted:#5a6475; --faint:#8a93a3;
+    --blue:#0a7aff; --purple:#a63fe0; --orange:#f08a00; --green:#1fb24a; --teal:#1aa6c4; --red:#e3483f;
+    --track:#e4e8f0; --map1:#bcd4f2; --map2:#5fa0ec; --map3:#0a7aff;
+    --shadow:0 1px 3px rgba(12,18,30,.08);
+  }
 }
 html, body, [class*="css"], .stMarkdown, p, span, div { font-family:"Hanken Grotesk",system-ui,sans-serif; }
 h1,h2,h3 { font-family:"Nunito",sans-serif !important; letter-spacing:-.02em; }
+.stApp{ background:var(--bg); }
 /* desktop-first: a wide, dense dashboard; Streamlit reflows it on phones automatically */
-.block-container{ padding-top:1.2rem; padding-bottom:3rem; max-width:1120px; }
-#MainMenu, header, footer { visibility:hidden; }
+.block-container{ padding-top:1.2rem; padding-bottom:3rem; max-width:1180px; }
+#MainMenu, header, footer, [data-testid="stDecoration"], [data-testid="stStatusWidget"] { display:none !important; }
+/* exercise grid — spread cards across the page instead of a single tall column */
+.exgrid{ display:grid; grid-template-columns:repeat(auto-fill,minmax(300px,1fr)); gap:11px; margin-top:2px; }
+.exrow{ display:flex; align-items:center; gap:13px; background:var(--surface); border:1px solid var(--line);
+  border-radius:16px; padding:12px 15px; box-shadow:var(--shadow); }
 /* tabs -> app-like segmented, scrollable on phone */
 .stTabs [data-baseweb="tab-list"]{ gap:4px; background:var(--surface-2); padding:4px; border-radius:13px; overflow-x:auto; }
 .stTabs [data-baseweb="tab"]{ height:auto; padding:8px 14px; border-radius:9px; color:var(--muted); font-weight:800; font-family:"Nunito"; }
@@ -62,6 +79,12 @@ h1,h2,h3 { font-family:"Nunito",sans-serif !important; letter-spacing:-.02em; }
 .btrack{ height:8px; border-radius:6px; background:var(--surface-2); overflow:hidden; }
 .bar.primary .btrack{ height:11px; }
 .bfill{ height:100%; border-radius:6px; }
+/* widget polish — consistent rounded controls in both themes */
+.stButton>button{ border-radius:14px; font-weight:700; border-color:var(--line); }
+.stButton>button:hover{ border-color:color-mix(in srgb,var(--blue) 50%,var(--line)); }
+[data-testid="stExpander"]{ border-radius:16px; border-color:var(--line); }
+[data-baseweb="segmented-control"]{ border-radius:13px; }
+hr{ border-color:var(--line); }
 </style>
 """
 
