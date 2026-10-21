@@ -13,25 +13,25 @@ CSS = """
 
 /* Automatic System Themes: Dark is default for dark OS; Light flips automatically when viewer OS is in light mode */
 :root {
-  --bg:#090c12; --surface:#131824; --surface-2:#1c2333; --surface-elevated:#222b3e;
-  --line:rgba(255,255,255,.14); --line-strong:rgba(255,255,255,.24);
-  --fg:#f8fafc; --muted:#cbd5e1; --faint:#94a3b8;
+  --bg:#0b0f19; --surface:#151d2d; --surface-2:#1e293b; --surface-elevated:#27354d;
+  --line:#2e3d5b; --line-strong:#475569;
+  --fg:#ffffff; --muted:#cbd5e1; --faint:#94a3b8;
   --blue:#3898ff; --purple:#c084fc; --orange:#fb923c; --green:#34d399; --teal:#22d3ee; --red:#f87171;
   --track:#242c3e; --map1:#1e40af; --map2:#2563eb; --map3:#3898ff;
-  --shadow:0 4px 16px rgba(0,0,0,.50);
-  --gh-0:#1c2333; --gh-1:#0e4429; --gh-2:#006d32; --gh-3:#26a641; --gh-4:#39d353;
-  --seg-bg:#1c2333; --seg-btn:transparent; --seg-btn-hover:#242d40; --seg-active:#3898ff;
-  --input-bg:#1c2333; --input-fg:#f8fafc;
+  --shadow:0 6px 22px rgba(0,0,0,.60);
+  --gh-0:#1e293b; --gh-1:#0e4429; --gh-2:#006d32; --gh-3:#26a641; --gh-4:#39d353;
+  --seg-bg:#1e293b; --seg-btn:transparent; --seg-btn-hover:#27354d; --seg-active:#3898ff;
+  --input-bg:#151d2d; --input-fg:#ffffff;
 }
 
 @media (prefers-color-scheme: light) {
   :root {
     --bg:#f4f6fb; --surface:#ffffff; --surface-2:#eef2f8; --surface-elevated:#f8fafc;
-    --line:rgba(15,23,42,.12); --line-strong:rgba(15,23,42,.22);
-    --fg:#0f172a; --muted:#475569; --faint:#64748b;
+    --line:#cbd5e1; --line-strong:#94a3b8;
+    --fg:#0f172a; --muted:#334155; --faint:#64748b;
     --blue:#0a7aff; --purple:#9333ea; --orange:#ea580c; --green:#16a34a; --teal:#0891b2; --red:#dc2626;
     --track:#e2e8f0; --map1:#bfdbfe; --map2:#60a5fa; --map3:#0a7aff;
-    --shadow:0 2px 10px rgba(15,23,42,.06);
+    --shadow:0 2px 12px rgba(15,23,42,.08);
     --gh-0:#ebedf0; --gh-1:#9be9a8; --gh-2:#40c463; --gh-3:#30a14e; --gh-4:#216e39;
     --seg-bg:#eef2f8; --seg-btn:transparent; --seg-btn-hover:#e2e8f0; --seg-active:#0a7aff;
     --input-bg:#ffffff; --input-fg:#0f172a;
@@ -55,22 +55,23 @@ h1, h2, h3, h4 {
 .block-container{ padding-top:1.1rem; padding-bottom:3rem; max-width:1180px; }
 #MainMenu, header, footer, [data-testid="stDecoration"], [data-testid="stStatusWidget"] { display:none !important; }
 
-/* Unify Streamlit bordered containers (`st.container(border=True)`) with `.fcard` */
+/* Distinct, elevated card separation for `st.container(border=True)` (exercise boxes) */
 [data-testid="stVerticalBlockBorderWrapper"]{
   background:var(--surface) !important;
-  border:1px solid var(--line) !important;
+  border:1.5px solid var(--line) !important;
   border-radius:20px !important;
   box-shadow:var(--shadow) !important;
   padding:16px !important;
   color:var(--fg) !important;
-  transition:border-color .15s ease, transform .15s ease;
+  margin-bottom:12px !important;
+  transition:border-color .15s ease, box-shadow .15s ease;
 }
 [data-testid="stVerticalBlockBorderWrapper"]:hover{
-  border-color:color-mix(in srgb,var(--blue) 45%,var(--line)) !important;
+  border-color:color-mix(in srgb,var(--blue) 55%,var(--line)) !important;
+  box-shadow:0 8px 24px rgba(0,0,0,.60) !important;
 }
 
-/* FIX: Segmented control & ButtonGroup (st.segmented_control / st.pills for Üst A / Alt A / Üst B & Hafta / Ay)
-   Eliminates the bright white boxes completely in Dark Mode! */
+/* FIX: Segmented control & ButtonGroup (st.segmented_control / st.pills for Üst A / Alt A / Üst B & Hafta / Ay) */
 div.stButtonGroup,
 div[data-testid="stButtonGroup"],
 div[data-testid="stSegmentedControl"],
@@ -132,20 +133,71 @@ div[data-testid="stButtonGroup"] [role="button"] * {
   color:inherit !important;
 }
 
-/* FIX: Number inputs & Text inputs in Dark Mode (no more white boxes!) */
-[data-baseweb="input"], [data-baseweb="base-input"], [data-baseweb="select"] > div {
+/* FIX: Number inputs, Text inputs, Date inputs, Selectboxes — NO MORE WHITE BOXES! */
+div.stNumberInput,
+div.stTextInput,
+div.stDateInput,
+div.stSelectbox,
+div[data-testid="stNumberInput"],
+div[data-testid="stTextInput"],
+div[data-testid="stDateInput"],
+div[data-testid="stSelectbox"] {
+  color:var(--input-fg) !important;
+}
+
+div[data-testid="stNumberInputContainer"],
+div[data-testid="stTextInputRootElement"],
+div[data-testid="stDateInput"] > div,
+div[data-testid="stDateInput"] [data-baseweb="input"],
+div[data-testid="stSelectbox"] > div,
+div[data-testid="stSelectbox"] [data-baseweb="select"] > div,
+div[data-baseweb="input"],
+div[data-baseweb="base-input"],
+div[data-baseweb="select"] > div {
   background:var(--input-bg) !important;
+  background-color:var(--input-bg) !important;
   color:var(--input-fg) !important;
   border:1px solid var(--line) !important;
   border-radius:12px !important;
 }
-[data-baseweb="input"] input, [data-baseweb="select"] span, [data-baseweb="select"] div {
+
+/* Force all inner input elements to be transparent over input-bg */
+input,
+input[type="text"],
+input[type="number"],
+div[data-testid="stNumberInputField"],
+div[data-testid="stTextInputField"],
+div[data-testid="stDateInputField"],
+[data-baseweb="input"] input,
+[data-baseweb="select"] span,
+[data-baseweb="select"] div {
+  background:transparent !important;
+  background-color:transparent !important;
   color:var(--input-fg) !important;
 }
-[data-testid="stNumberInputStepDown"], [data-testid="stNumberInputStepUp"] {
+
+/* Number input increment/decrement buttons */
+[data-testid="stNumberInputStepDown"],
+[data-testid="stNumberInputStepUp"] {
   color:var(--input-fg) !important;
   background:var(--surface-2) !important;
   border-color:var(--line) !important;
+}
+[data-testid="stNumberInputStepDown"]:hover,
+[data-testid="stNumberInputStepUp"]:hover {
+  background:var(--surface-elevated) !important;
+  color:var(--fg) !important;
+}
+
+/* High contrast for all widget labels */
+label,
+[data-testid="stWidgetLabel"],
+[data-testid="stWidgetLabel"] p,
+[data-testid="stWidgetLabel"] label,
+div[data-testid="stCheckbox"] label span {
+  color:var(--fg) !important;
+  font-weight:700 !important;
+  font-size:13.5px !important;
 }
 
 /* Exercise card internal layout */
@@ -285,23 +337,78 @@ div[data-testid="stButtonGroup"] [role="button"] * {
 .stButton>button:hover:not(:disabled){
   border-color:color-mix(in srgb,var(--blue) 60%,var(--line)) !important;
 }
+/* FIX: Expander — header summary must NEVER turn white in Dark Mode! */
 [data-testid="stExpander"]{
-  border-radius:14px !important;
-  border:1px solid var(--line) !important;
+  border-radius:16px !important;
+  border:1.5px solid var(--line) !important;
+  background:var(--surface) !important;
+  color:var(--fg) !important;
+  overflow:hidden !important;
+  box-shadow:var(--shadow) !important;
+  margin-bottom:12px !important;
+}
+[data-testid="stExpander"] details{
+  background:var(--surface) !important;
+}
+[data-testid="stExpander"] summary{
   background:var(--surface-2) !important;
+  background-color:var(--surface-2) !important;
+  color:var(--fg) !important;
+  padding:12px 16px !important;
+  border:none !important;
+  transition:background .15s ease !important;
+}
+[data-testid="stExpander"] summary:hover,
+[data-testid="stExpander"] summary:focus,
+[data-testid="stExpander"] summary:active,
+[data-testid="stExpander"][open] summary{
+  background:var(--surface-elevated) !important;
+  background-color:var(--surface-elevated) !important;
   color:var(--fg) !important;
 }
-[data-testid="stExpander"] summary, [data-testid="stExpander"] summary p, [data-testid="stExpander"] summary span {
-  color:var(--fg) !important; font-weight:700 !important;
+[data-testid="stExpander"] summary *,
+[data-testid="stExpander"] summary p,
+[data-testid="stExpander"] summary span,
+[data-testid="stExpander"] summary div{
+  color:var(--fg) !important;
+  font-weight:700 !important;
 }
+[data-testid="stExpanderDetails"]{
+  background:var(--surface) !important;
+  border-top:1px solid var(--line) !important;
+  padding:16px !important;
+  color:var(--fg) !important;
+}
+
+/* File uploader styling */
 [data-testid="stFileUploader"] section {
-  background:var(--surface) !important; border:1px dashed var(--line) !important; border-radius:16px !important; color:var(--fg) !important;
+  background:var(--surface) !important; border:1.5px dashed var(--line) !important; border-radius:16px !important; color:var(--fg) !important;
 }
 [data-testid="stFileUploader"] button {
   background:var(--surface-2) !important; color:var(--fg) !important; border:1px solid var(--line) !important;
 }
-[data-testid="stCaptionContainer"], .stCaption {
+
+/* Captions and explanatory text — bright, readable silver, NOT faint dark grey */
+[data-testid="stCaptionContainer"],
+.stCaption,
+.stCaption p,
+.stCaption span,
+.stCaption div {
   color:var(--muted) !important;
+  font-weight:600 !important;
+  font-size:12.5px !important;
+  line-height:1.45 !important;
+}
+
+/* Alert boxes (st.info, st.success, st.warning) */
+[data-testid="stAlert"] {
+  background:var(--surface-2) !important;
+  border:1px solid var(--line) !important;
+  border-radius:14px !important;
+  color:var(--fg) !important;
+}
+[data-testid="stAlert"] * {
+  color:var(--fg) !important;
 }
 hr{ border-color:var(--line); }
 </style>

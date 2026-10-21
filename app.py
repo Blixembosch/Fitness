@@ -897,7 +897,7 @@ def page_workout():
         st.caption("Kürek/eliptik/bisiklet Apple Health'ten Crono'ya düşünce İstatistik'te otomatik işaretlenir. Aşağıdan bir güç antrenmanı da seçebilirsin.")
     elif not today["exercises"]:
         st.info(f"Bugün **{today['name']}** — {today.get('note','')}. İstersen aşağıdan bir antrenman seç ve çalış.")
-    choice = st.segmented_control("Antrenman", names, default=default, key="wsel") or default
+    choice = st.segmented_control("Antrenman", names, default=default, key="wsel", label_visibility="collapsed") or default
     day = next(d for d in training if d["name"] == choice)
     color = P.FOCUS_COLOR[day["focus"]]
     phase, extra = current_phase()
