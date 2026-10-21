@@ -60,6 +60,45 @@ DAYS = [
 # icon per cardio type (matches Cronometer's cleaned labels, so Stats auto-matches these sessions)
 CARDIO_ICON = {"Kürek": "🚣", "Eliptik": "🏃", "Bisiklet": "🚴", "Kardiyo": "🔥"}
 
+# --- 12-week periodization ---------------------------------------------------------------------
+# The block runs in three 4-week phases. Volume (base sets) rises then holds while intensity (RPE)
+# climbs, which is the muscle-sparing pattern that matters most in a GLP-1 (Wegovy) deficit:
+# resistance volume + high protein protect lean mass while fat comes off. `base_sets` is the sets
+# per lift that phase, `ell` the elliptical finisher minutes on every lifting day.
+BASE_SETS = 3
+PHASES = [
+    {"weeks": (1, 4), "key": "temel", "name": "Temel · Adaptasyon", "base_sets": 3, "rpe": "6–7", "ell": 10,
+     "note": "Hareketleri oturt, eklem/tendon adaptasyonu. GLP-1'de enerji düşebilir — teknik ve protein öncelik, yükü zorlamadan ilerlet."},
+    {"weeks": (5, 8), "key": "gelisim", "name": "Gelişim · Yüklenme", "base_sets": 4, "rpe": "7–8", "ell": 12,
+     "note": "Öncelikli kaslarda (sırt/göğüs/omuz/karın) hacmi artır; her lift'te +1 set. Yük veya tekrarı kademeli ilerlet (çift ilerleme)."},
+    {"weeks": (9, 12), "key": "koruma", "name": "Koruma · Yoğunluk", "base_sets": 4, "rpe": "8", "ell": 15,
+     "note": "Açık büyüdükçe kası koru: yoğunluğu tut, yük bırakma. Yorgunluk birikirse 1 hafta deload (set/yoğunluk −%40). Uyku + protein kritik."},
+]
+PROGRAM_WEEKS = 12
+
+
+def phase_for(week: int) -> dict:
+    """The phase config for a 1..12 week number (week 0/None → Phase 1 preview)."""
+    w = max(1, int(week or 1))
+    for p in PHASES:
+        lo, hi = p["weeks"]
+        if lo <= w <= hi:
+            return p
+    return PHASES[-1]
+
+
+def phase_extra_sets(phase: dict) -> int:
+    return int(phase["base_sets"]) - BASE_SETS
+
+
+def lifting_finisher(day: dict, minutes: int) -> dict | None:
+    """Elliptical finisher appended to every lifting day (low-impact fat-loss + recovery)."""
+    if day.get("focus") in ("upper", "lower", "full"):
+        return {"name": "Eliptik (bitiriş)", "type": "Eliptik", "minutes": int(minutes),
+                "tip": f"Antrenman sonu {int(minutes)} dk orta tempo — yağ yakımı ve toparlanma; eklem dostu."}
+    return None
+
+
 TRAINING_DAYS = [d for d in DAYS if d["exercises"]]  # the 3 lifting days
 SESSIONS_PER_WEEK = len([d for d in DAYS if d["focus"] in ("upper", "lower", "full")]) + 1  # +cardio = 4
 
@@ -68,19 +107,21 @@ def day_for(weekday: int) -> dict:
     return DAYS[weekday % 7]
 
 
-def exercise_detail(entry: dict) -> dict:
-    """Catalogue fields for a program entry: name + primary/secondary muscles + groups."""
+def exercise_detail(entry: dict, extra_sets: int = 0) -> dict:
+    """Catalogue fields for a program entry: name + primary/secondary muscles + groups. `extra_sets`
+    applies the current phase's added volume (e.g. +1 set in the build/peak phases)."""
     ex = data.by_id().get(entry["id"], {})
     primary = [m for m in [ex.get("tg"), ex.get("mg")] if m]
     secondary = [m for m in (ex.get("sm") or []) if m not in primary]
     return {
-        **entry, "name": ex.get("n", entry["id"]), "bp": ex.get("bp"), "eq": ex.get("eq"),
+        **entry, "sets": max(1, int(entry.get("sets", BASE_SETS)) + extra_sets),
+        "name": ex.get("n", entry["id"]), "bp": ex.get("bp"), "eq": ex.get("eq"),
         "primary": primary, "secondary": secondary,
     }
 
 
-def day_details(day: dict) -> list[dict]:
-    return [exercise_detail(e) for e in day["exercises"]]
+def day_details(day: dict, extra_sets: int = 0) -> list[dict]:
+    return [exercise_detail(e, extra_sets) for e in day["exercises"]]
 
 
 _GROUP_ORDER = ["Göğüs", "Sırt", "Omuz", "Kol", "Bacak", "Baldır", "Karın"]
@@ -98,8 +139,8 @@ def day_groups(day: dict, limit: int = 4) -> list[str]:
     return ordered[:limit]
 
 
-def day_load(day: dict) -> dict:
-    sets = sum(int(e.get("sets", 0)) for e in day["exercises"])
+def day_load(day: dict, extra_sets: int = 0) -> dict:
+    sets = sum(int(e.get("sets", 0)) + extra_sets for e in day["exercises"]) if day["exercises"] else 0
     minutes = max(5, round(sets * 3 / 5) * 5) if sets else 0
     return {"exercises": len(day["exercises"]), "sets": sets, "minutes": minutes}
 
