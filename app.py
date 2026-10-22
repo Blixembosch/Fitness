@@ -143,9 +143,9 @@ def _sheet_data():
         return [], [], 0, {}
 
 
-@st.cache_data(ttl=300, show_spinner=False)
+@st.cache_data(ttl=120, show_spinner=False)
 def _calendar_padel_events(url: str) -> list[dict]:
-    """Padel events from Google Calendar iCal feed. Cached 5 min."""
+    """Padel events from Google Calendar iCal feed. Cached 2 min."""
     if not url:
         return []
     return calendar_sync.fetch_padel_events(url)
@@ -157,7 +157,12 @@ def calendar_padel_events() -> list[dict]:
         url = calendar_sync.get_calendar_url(st.secrets, S)
     except Exception:
         url = calendar_sync.get_calendar_url(None, S)
-    return _calendar_padel_events(url) if url else []
+    raw = _calendar_padel_events(url) if url else []
+    # Strict filter: ignore any event that mentions Atlas anywhere
+    return [
+        e for e in raw
+        if "atlas" not in f"{e.get('summary', '')} {e.get('description', '')}".lower()
+    ]
 
 
 def cron_ex_df():

@@ -29,6 +29,7 @@ def test_is_padel_summary():
     assert calendar_sync.is_padel_summary("") is False
 
     # Exclude Atlas's padel lessons and kids' sessions
+    assert calendar_sync.is_padel_summary("Padel Training for Atlas") is False
     assert calendar_sync.is_padel_summary("Atlas Padel") is False
     assert calendar_sync.is_padel_summary("Atlas Padel Dersi") is False
     assert calendar_sync.is_padel_summary("Atlas'ın Padel Dersi") is False

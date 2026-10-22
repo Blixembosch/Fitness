@@ -271,14 +271,22 @@ def fetch_padel_events(
     secrets=None,
     session_state=None,
 ) -> list[dict]:
-    """Fetch only Padel / racquet events from Google Calendar."""
+    """Fetch only Padel / racquet events from Google Calendar (strictly excluding Atlas)."""
     events = fetch_calendar_events(
         url=url,
         timeout=timeout,
         secrets=secrets,
         session_state=session_state,
     )
-    return [e for e in events if e.get("is_padel")]
+    return [
+        e for e in events
+        if e.get("is_padel")
+        and not re.search(
+            r"atlas",
+            f"{e.get('summary','')} {e.get('description','')} {e.get('location','')}",
+            re.IGNORECASE,
+        )
+    ]
 
 
 def padel_dates_from_events(events: list[dict]) -> set[str]:
