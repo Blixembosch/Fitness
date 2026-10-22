@@ -913,6 +913,132 @@ def page_plan():
         )
 
 
+def _check_and_mark_workout_done(day: dict, all_steps: list[dict], date_iso: str):
+    """If all lift steps are finished, automatically record the workout as completed."""
+    lift_steps = [ex for ex in all_steps if ex.get("kind") == "lift"]
+    all_done = all(
+        S["setlog"].get(f"{date_iso}|{day['key']}|{ex['id']}", 0) >= int(ex["sets"])
+        for ex in lift_steps
+    )
+    already = any(w["date"] == date_iso and w.get("key") == day["key"] for w in S["workouts"])
+    if all_done and not already:
+        prim, sec = P.day_muscles(day)
+        S["workouts"].append({"date": date_iso, "key": day["key"], "name": day["name"], "primary": prim, "secondary": sec})
+
+
+def _workout_step_card(
+    i: int,
+    e: dict,
+    day_color: str,
+    day_key: str,
+    date_iso: str,
+    day_obj=None,
+    all_steps=None,
+    already_done: bool = False,
+):
+    """Interactive workout card for Antrenman page: identical aesthetic to Plan cards,
+    equipped with small, modern, sleek set/activity logging buttons and progress dots."""
+    key = f"{date_iso}|{day_key}|{e['id']}"
+    is_cardio = e.get("kind") == "cardio"
+    total = int(e["sets"])
+    done = total if already_done else S["setlog"].get(key, 0)
+    finished = done >= total
+    accent = "var(--orange)" if e.get("type") == "Kürek" else ("var(--green)" if is_cardio else day_color)
+
+    badge_col = "var(--green)" if finished else accent
+    badge_bg = "var(--green)" if finished else f"color-mix(in srgb,{accent} 22%,var(--surface-2))"
+    badge_fg = "#ffffff" if finished else accent
+    badge_content = "✓" if finished else str(i)
+    badge_border = "var(--green)" if finished else f"color-mix(in srgb,{accent} 45%,transparent)"
+
+    role_chip = (
+        f"<span class='chip' style='font-size:10.5px;padding:2px 8px;color:{accent}'>"
+        f"{P.CARDIO_ICON.get(e.get('type'), '🔥')} {e.get('role', 'Kardiyo')}</span>"
+        if is_cardio else ""
+    )
+    chips = role_chip + "".join(
+        f"<span class='chip' style='font-size:10.5px;padding:3px 8px'>{data.tr_muscle(m)}</span>"
+        for m in e.get("primary", [])[:2]
+    )
+    last_kg = S.get("loadlog", {}).get(e["id"]) if not is_cardio else None
+    if last_kg:
+        chips += f"<span class='chip' style='font-size:10.5px;padding:3px 8px;color:var(--fg)'>⚖️ {last_kg:g} kg</span>"
+
+    right_lbl = e["reps"] if is_cardio else f"{e['sets']}×{e['reps']}"
+    title_txt = e["name"] if is_cardio else e["name"].title()
+    sub_tip = f"<div class='muted' style='font-size:11.5px;margin-top:5px;line-height:1.4'>{e.get('tip','')}</div>" if e.get("tip") else ""
+
+    # Set indicator dots (● completed, ○ remaining)
+    dots = ""
+    for s_idx in range(total):
+        dot_col = "var(--green)" if s_idx < done else "var(--line)"
+        dots += f"<span style='display:inline-block;width:6px;height:6px;border-radius:50%;background:{dot_col};margin-inline-start:3px;vertical-align:middle'></span>"
+
+    done_marker = "<span class='wo-done-marker' style='display:none'></span>" if finished else ""
+
+    with st.container(border=True):
+        st.markdown(
+            f"<div class='wo-step-box'></div>{done_marker}"
+            f"<div style='display:flex;align-items:flex-start;gap:12px;margin-bottom:8px'>"
+            f"<div style='width:34px;height:34px;border-radius:50%;background:{badge_bg};color:{badge_fg};"
+            f"border:1.5px solid {badge_border};font-family:Nunito;font-weight:900;font-size:14px;"
+            f"display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:2px'>{badge_content}</div>"
+            f"<div style='flex:1;min-width:0'>"
+            f"<div style='display:flex;justify-content:space-between;align-items:flex-start;gap:6px'>"
+            f"<div style='font-weight:800;font-size:14.5px;color:var(--fg);line-height:1.25'>{title_txt}</div>"
+            f"<div style='text-align:right;flex-shrink:0'>"
+            f"<div style='font-family:Nunito;font-weight:800;color:{badge_col};font-size:14.5px'>{right_lbl}</div>"
+            f"<div style='margin-top:2px'>{dots}</div>"
+            f"</div>"
+            f"</div>"
+            f"<div class='chiprow' style='margin-top:4px'>{chips}</div>"
+            f"{sub_tip}"
+            f"</div></div>",
+            unsafe_allow_html=True,
+        )
+
+        # Small, modern, sleek action button
+        if finished:
+            b1, b2 = st.columns([4.2, 1], gap="small")
+            with b1:
+                if st.button(f"✅ {total}/{total} Tamamlandı" if not is_cardio else "✅ Tamamlandı", key=f"s_{key}", use_container_width=True, help="Geri almak için tıkla"):
+                    S["setlog"][key] = max(0, done - 1)
+                    if already_done:
+                        S["workouts"] = [w for w in S["workouts"] if not (w["date"] == date_iso and w.get("key") == day_key)]
+                    _save()
+                    st.rerun()
+            with b2:
+                if st.button("↺", key=f"r_{key}", use_container_width=True, help="Bu egzersizi sıfırla"):
+                    S["setlog"][key] = 0
+                    if already_done:
+                        S["workouts"] = [w for w in S["workouts"] if not (w["date"] == date_iso and w.get("key") == day_key)]
+                    _save()
+                    st.rerun()
+        elif done > 0:
+            b1, b2 = st.columns([4.2, 1], gap="small")
+            with b1:
+                btn_txt = f"✓ Set ({done+1}/{total})" if not is_cardio else "✓ Yapıldı"
+                if st.button(btn_txt, key=f"s_{key}", use_container_width=True):
+                    S["setlog"][key] = min(total, done + 1)
+                    if day_obj and all_steps:
+                        _check_and_mark_workout_done(day_obj, all_steps, date_iso)
+                    _save()
+                    st.rerun()
+            with b2:
+                if st.button("↺", key=f"r_{key}", use_container_width=True, help="Son seti geri al"):
+                    S["setlog"][key] = max(0, done - 1)
+                    _save()
+                    st.rerun()
+        else:
+            btn_txt = f"✓ Set (1/{total})" if not is_cardio else f"✓ Yapıldı ({e['reps']})"
+            if st.button(btn_txt, key=f"s_{key}", use_container_width=True):
+                S["setlog"][key] = 1
+                if day_obj and all_steps:
+                    _check_and_mark_workout_done(day_obj, all_steps, date_iso)
+                _save()
+                st.rerun()
+
+
 def page_workout():
     st.markdown("<h1 style='margin:0 0 10px'>Antrenman</h1>", unsafe_allow_html=True)
     training = P.TRAINING_DAYS
@@ -961,7 +1087,14 @@ def page_workout():
     weg_note = f" · 💉 Wegovy ({ws['dose_mg']:g} mg) 48s esnek RPE" if ws["in_48h"] else ""
 
     already = any(w["date"] == done_iso and w.get("key") == day["key"] for w in S["workouts"])
-    status_tag = " · <span style='color:var(--green);font-weight:700'>Tamamlandı ✓</span>" if already else ""
+    total_sets = sum(int(e["sets"]) for e in steps)
+    done_sets = sum(min(int(e["sets"]), S["setlog"].get(f"{done_iso}|{day['key']}|{e['id']}", 0)) for e in steps)
+    if already:
+        status_tag = " · <span style='color:var(--green);font-weight:700'>Tamamlandı ✓</span>"
+    elif done_sets > 0:
+        status_tag = f" · <span style='color:var(--blue);font-weight:700'>{done_sets}/{total_sets} set</span>"
+    else:
+        status_tag = ""
 
     chips = "".join(f"<span class='chip'>{g}</span>" for g in P.day_groups(day))
     chips += "<span class='chip' style='color:var(--green)'>🏃 Eliptik 5+10 dk</span>"
@@ -979,15 +1112,15 @@ def page_workout():
         unsafe_allow_html=True,
     )
 
-    # Render all numbered steps (1..N) matching Plan page layout 1:1 using .exgrid
-    boxes = "".join(
-        _plan_step_box(
-            i, e, color,
-            is_done=already or (S["setlog"].get(f"{done_iso}|{day['key']}|{e['id']}", 0) >= int(e["sets"])),
-        )
-        for i, e in enumerate(steps, 1)
-    )
-    st.markdown(f"<div class='exgrid'>{boxes}</div>", unsafe_allow_html=True)
+    # Render all numbered steps (1..N) matching Plan page layout 1:1 in 3 columns
+    # equipped with small, modern, sleek set/activity logging buttons
+    cols_per_row = 3
+    for r_start in range(0, len(steps), cols_per_row):
+        row_steps = steps[r_start:r_start + cols_per_row]
+        cols = st.columns(cols_per_row, gap="small")
+        for col, (sub_i, e) in zip(cols, enumerate(row_steps, r_start + 1)):
+            with col:
+                _workout_step_card(sub_i, e, color, day["key"], done_iso, day, steps, already)
 
     st.markdown("<div style='height:14px'></div>", unsafe_allow_html=True)
     if already:

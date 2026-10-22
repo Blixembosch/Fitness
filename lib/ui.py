@@ -379,6 +379,54 @@ div[data-testid="stCheckbox"] label span {
 .stButton>button:hover:not(:disabled){
   border-color:color-mix(in srgb,var(--blue) 60%,var(--line)) !important;
 }
+
+/* Sleek, modern, compact workout card buttons */
+div[data-testid="stVerticalBlockBorderWrapper"]:has(.wo-step-box) {
+  padding: 14px 16px !important;
+  margin-bottom: 12px !important;
+  display: flex !important;
+  flex-direction: column !important;
+  justify-content: space-between !important;
+  min-height: 100% !important;
+}
+
+div[data-testid="stVerticalBlockBorderWrapper"]:has(.wo-done-marker) {
+  border-color: color-mix(in srgb, var(--green) 45%, var(--line)) !important;
+  background: radial-gradient(130% 90% at 100% 0%, color-mix(in srgb,var(--green) 12%,transparent), transparent 60%), var(--surface) !important;
+}
+
+div[data-testid="stVerticalBlockBorderWrapper"]:has(.wo-step-box) .stButton > button {
+  min-height: 32px !important;
+  height: 32px !important;
+  padding: 2px 10px !important;
+  font-size: 12px !important;
+  font-weight: 700 !important;
+  border-radius: 10px !important;
+  border: 1px solid var(--line) !important;
+  background: var(--surface-2) !important;
+  color: var(--fg) !important;
+  letter-spacing: .01em !important;
+  transition: all .15s ease !important;
+}
+
+div[data-testid="stVerticalBlockBorderWrapper"]:has(.wo-step-box) .stButton > button:hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--blue) 55%, var(--line)) !important;
+  background: var(--surface-elevated) !important;
+  color: #ffffff !important;
+}
+
+div[data-testid="stVerticalBlockBorderWrapper"]:has(.wo-done-marker) .stButton:first-child > button {
+  background: color-mix(in srgb, var(--green) 14%, var(--surface-2)) !important;
+  border-color: color-mix(in srgb, var(--green) 40%, var(--line)) !important;
+  color: var(--green) !important;
+  font-weight: 800 !important;
+}
+
+div[data-testid="stVerticalBlockBorderWrapper"]:has(.wo-done-marker) .stButton:first-child > button:hover {
+  background: color-mix(in srgb, var(--green) 22%, var(--surface-2)) !important;
+  border-color: var(--green) !important;
+  color: #ffffff !important;
+}
 /* FIX: Expander — header summary must NEVER turn white in Dark Mode! */
 [data-testid="stExpander"]{
   border-radius:16px !important;
