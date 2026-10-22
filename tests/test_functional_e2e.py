@@ -200,3 +200,32 @@ def test_functional_stats_renders_clean_placeholder_when_no_post_start_weights()
     # Ensure page rendered successfully
     assert any("İstatistik & Hedef Takibi" in str(m.value) for m in at.markdown)
 
+
+def test_functional_workout_steps_compact_single_line_and_heatmap_fluid():
+    """Verify workout steps 9-10 are compact single-line and heatmap has fluid columns without scrollbar."""
+    import datetime as dt
+    from lib import program as P
+
+    # 1. Workout steps 9 and 10 single-line checks
+    day = P.day_for(0)  # Üst A (10 steps)
+    steps = P.workout_steps(day)
+    assert len(steps) == 10
+    step9 = steps[8]
+    step10 = steps[9]
+
+    assert step9["name"] == "Kürek (Rower) — Yağ Yakım"
+    assert step9["tip"] == "10 dk canlı tempo · metabolik yağ yakımı."
+    assert len(step9["tip"]) <= 42
+
+    assert step10["name"] == "Eliptik — Yağ Yakım & Soğuma"
+    assert step10["tip"] == "10 dk Zone-2 · toparlanma ve yağ yakımı."
+    assert len(step10["tip"]) <= 42
+    assert len(step10["name"]) <= 30
+
+    # 2. Fluid heatmap checks (no hardcoded minmax 11px)
+    today = dt.date(2026, 10, 22)
+    hm_html = ui.github_heatmap(today, {}, weeks=52)
+    assert "minmax(0,1fr)" in hm_html
+    assert "minmax(11px,1fr)" not in hm_html
+
+

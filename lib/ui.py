@@ -450,30 +450,31 @@ div[data-testid="stCheckbox"] label span {
 .bar.primary .btrack{ height:11px; }
 .bfill{ height:100%; border-radius:6px; }
 
-/* GitHub-style Contribution Heatmap */
-.gh-card{ background:var(--surface); border:1px solid var(--line); border-radius:20px; padding:18px 20px; margin-bottom:12px; box-shadow:var(--shadow); color:var(--fg); }
-.gh-top{ display:flex; justify-content:space-between; align-items:baseline; flex-wrap:wrap; gap:10px; margin-bottom:12px; }
+/* GitHub-style Contribution Heatmap - fluid, responsive, fits page without scrollbar */
+.gh-card{ background:var(--surface); border:1px solid var(--line); border-radius:18px; padding:14px 16px; margin-bottom:12px; box-shadow:var(--shadow); color:var(--fg); }
+.gh-top{ display:flex; justify-content:space-between; align-items:baseline; flex-wrap:wrap; gap:10px; margin-bottom:10px; }
 .gh-title{ font-family:"Nunito",sans-serif; font-weight:800; font-size:14px; color:var(--fg); }
 .gh-pills{ display:flex; gap:8px; flex-wrap:wrap; font-size:11px; font-weight:700; color:var(--fg); }
 .gh-pill{ background:var(--surface-2); border:1px solid var(--line); padding:3px 10px; border-radius:999px; display:inline-flex; align-items:center; gap:6px; }
 .gh-dot{ width:8px; height:8px; border-radius:50%; display:inline-block; }
-.gh-scroll{ overflow-x:auto; padding-bottom:4px; }
-.gh-board{ min-width:680px; }
-.gh-months{ display:grid; gap:3px; margin-left:34px; margin-bottom:6px; font-size:10.5px; color:var(--muted); font-weight:700; line-height:1; }
+.gh-scroll{ overflow-x:auto; overflow-y:hidden; width:100%; padding:2px 2px 4px; scrollbar-width:none; -ms-overflow-style:none; }
+.gh-scroll::-webkit-scrollbar{ display:none; }
+.gh-board{ width:100%; min-width:0; }
+.gh-months{ display:grid; gap:2px; margin-left:27px; margin-bottom:5px; font-size:10px; color:var(--muted); font-weight:700; line-height:1; }
 .gh-months span{ white-space:nowrap; overflow:visible; }
-.gh-body{ display:flex; align-items:stretch; gap:6px; }
-.gh-days{ display:grid; grid-template-rows:repeat(7,1fr); gap:3px; width:28px; font-size:10px; color:var(--muted); font-weight:600; text-align:left; }
+.gh-body{ display:flex; align-items:stretch; gap:5px; }
+.gh-days{ display:grid; grid-template-rows:repeat(7,1fr); gap:2px; width:22px; font-size:9.5px; color:var(--muted); font-weight:600; text-align:left; }
 .gh-days span{ display:flex; align-items:center; line-height:1; }
-.gh-weeks{ flex:1; display:grid; grid-template-rows:repeat(7,1fr); grid-auto-flow:column; gap:3px; }
-.gh-cell{ aspect-ratio:1/1; min-width:11px; border-radius:3px; background:var(--gh-0); outline:1px solid rgba(128,128,128,.10); transition:transform .1s ease; }
+.gh-weeks{ flex:1; display:grid; grid-template-rows:repeat(7,1fr); grid-auto-flow:column; gap:2px; padding:2px; }
+.gh-cell{ aspect-ratio:1/1; min-width:0; width:100%; border-radius:2.5px; background:var(--gh-0); outline:1px solid rgba(128,128,128,.10); transition:transform .1s ease; box-sizing:border-box; }
 .gh-cell:hover{ transform:scale(1.22); z-index:2; outline:1px solid var(--fg); }
 .gh-cell.l1{ background:var(--gh-1); }
 .gh-cell.l2{ background:var(--gh-2); }
 .gh-cell.l3{ background:var(--gh-3); }
 .gh-cell.l4{ background:var(--gh-4); }
-.gh-cell.today{ outline:2px solid var(--blue); outline-offset:1px; }
+.gh-cell.today{ outline:2px solid var(--blue); outline-offset:0px; box-shadow:0 0 0 1px var(--blue); }
 .gh-cell.future{ opacity:.30; }
-.gh-foot{ display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-top:12px; padding-top:10px; border-top:1px solid var(--line); font-size:11px; color:var(--muted); }
+.gh-foot{ display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-top:10px; padding-top:8px; border-top:1px solid var(--line); font-size:11px; color:var(--muted); }
 .gh-scale{ display:flex; align-items:center; gap:4px; font-size:10.5px; color:var(--muted); font-weight:600; }
 .gh-scale i{ width:11px; height:11px; border-radius:2.5px; display:inline-block; outline:1px solid rgba(128,128,128,.12); }
 
@@ -915,7 +916,7 @@ def github_heatmap(
             cells.append(f'<div class="{cls}" title="{tip}"></div>')
 
     months_html = (
-        f'<div class="gh-months" style="grid-template-columns:repeat({weeks},minmax(11px,1fr))">'
+        f'<div class="gh-months" style="grid-template-columns:repeat({weeks},minmax(0,1fr))">'
         + "".join(month_spans)
         + "</div>"
     )
@@ -925,7 +926,7 @@ def github_heatmap(
         '</div>'
     )
     weeks_html = (
-        f'<div class="gh-weeks" style="grid-template-columns:repeat({weeks},minmax(11px,1fr))">'
+        f'<div class="gh-weeks" style="grid-template-columns:repeat({weeks},minmax(0,1fr))">'
         + "".join(cells)
         + "</div>"
     )

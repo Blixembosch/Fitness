@@ -180,21 +180,21 @@ def workout_steps(day: dict, extra_sets: int = 0) -> list[dict]:
         "eq": "Su Küreği (Rower)",
         "primary": ["lats", "upper back", "quads"],
         "secondary": ["glutes", "biceps", "abs"],
-        "tip": "10 dk canlı tempo · tüm vücut metabolik yağ yakımı.",
+        "tip": "10 dk canlı tempo · metabolik yağ yakımı.",
     }
     eliptik_fin = {
         "id": "cardio_finisher_eliptik",
         "kind": "cardio",
         "type": "Eliptik",
         "role": "Bitiriş",
-        "name": "Eliptik — Yağ Yakım & Toparlanma",
+        "name": "Eliptik — Yağ Yakım & Soğuma",
         "sets": 1,
         "reps": "10 dk",
         "minutes": 10,
         "eq": "Eliptik",
         "primary": ["quads", "glutes"],
         "secondary": ["hamstrings", "calves"],
-        "tip": "10 dk Zone-2 sabit tempo · aktif toparlanma ve yağ yakımı.",
+        "tip": "10 dk Zone-2 · toparlanma ve yağ yakımı.",
     }
     return [warm, *lifts, rower, eliptik_fin]
 
