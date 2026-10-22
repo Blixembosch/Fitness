@@ -660,44 +660,57 @@ hr{ border-color:var(--line); }
 """
 
 
+DARK_ROOT_CSS = """
+:root {
+  --bg:#0b0f19 !important; --surface:#151d2d !important; --surface-2:#1e293b !important; --surface-elevated:#27354d !important;
+  --line:#2e3d5b !important; --line-strong:#475569 !important;
+  --fg:#ffffff !important; --muted:#cbd5e1 !important; --faint:#94a3b8 !important;
+  --blue:#3898ff !important; --purple:#c084fc !important; --orange:#fb923c !important; --green:#34d399 !important; --teal:#22d3ee !important; --red:#f87171 !important;
+  --track:#242c3e !important; --map1:#1e40af !important; --map2:#2563eb !important; --map3:#3898ff !important;
+  --shadow:0 6px 22px rgba(0,0,0,.60) !important;
+  --gh-0:#1e293b !important; --gh-1:#0e4429 !important; --gh-2:#006d32 !important; --gh-3:#26a641 !important; --gh-4:#39d353 !important;
+  --seg-bg:#1e293b !important; --seg-btn:transparent !important; --seg-btn-hover:#27354d !important; --seg-active:#3898ff !important;
+  --input-bg:#151d2d !important; --input-fg:#ffffff !important;
+}
+""".strip()
+
+LIGHT_ROOT_CSS = """
+:root {
+  --bg:#f4f6fb !important; --surface:#ffffff !important; --surface-2:#eef2f8 !important; --surface-elevated:#f8fafc !important;
+  --line:#cbd5e1 !important; --line-strong:#94a3b8 !important;
+  --fg:#0f172a !important; --muted:#334155 !important; --faint:#64748b !important;
+  --blue:#0a7aff !important; --purple:#9333ea !important; --orange:#ea580c !important; --green:#16a34a !important; --teal:#0891b2 !important; --red:#dc2626 !important;
+  --track:#e2e8f0 !important; --map1:#bfdbfe !important; --map2:#60a5fa !important; --map3:#0a7aff !important;
+  --shadow:0 2px 12px rgba(15,23,42,.08) !important;
+  --gh-0:#ebedf0 !important; --gh-1:#9be9a8 !important; --gh-2:#40c463 !important; --gh-3:#30a14e !important; --gh-4:#216e39 !important;
+  --seg-bg:#eef2f8 !important; --seg-btn:transparent !important; --seg-btn-hover:#e2e8f0 !important; --seg-active:#0a7aff !important;
+  --input-bg:#ffffff !important; --input-fg:#0f172a !important;
+}
+""".strip()
+
+
 def inject(theme: str | None = None):
-    """Inject CSS with explicit theme enforcement (Dark by default, or explicit Light if requested)."""
-    css_to_inject = CSS
+    """Inject CSS with explicit theme enforcement.
+    Uses st.html (or unindented clean CSS) so the browser natively parses the stylesheet
+    without CommonMark ever rendering raw <style> text as a code block.
+    """
+    override = ""
     if theme == "dark":
-        dark_override = """
-        <style>
-        :root {
-          --bg:#0b0f19 !important; --surface:#151d2d !important; --surface-2:#1e293b !important; --surface-elevated:#27354d !important;
-          --line:#2e3d5b !important; --line-strong:#475569 !important;
-          --fg:#ffffff !important; --muted:#cbd5e1 !important; --faint:#94a3b8 !important;
-          --blue:#3898ff !important; --purple:#c084fc !important; --orange:#fb923c !important; --green:#34d399 !important; --teal:#22d3ee !important; --red:#f87171 !important;
-          --track:#242c3e !important; --map1:#1e40af !important; --map2:#2563eb !important; --map3:#3898ff !important;
-          --shadow:0 6px 22px rgba(0,0,0,.60) !important;
-          --gh-0:#1e293b !important; --gh-1:#0e4429 !important; --gh-2:#006d32 !important; --gh-3:#26a641 !important; --gh-4:#39d353 !important;
-          --seg-bg:#1e293b !important; --seg-btn:transparent !important; --seg-btn-hover:#27354d !important; --seg-active:#3898ff !important;
-          --input-bg:#151d2d !important; --input-fg:#ffffff !important;
-        }
-        </style>
-        """
-        css_to_inject += "\n" + dark_override
+        override = DARK_ROOT_CSS
     elif theme == "light":
-        light_override = """
-        <style>
-        :root {
-          --bg:#f4f6fb !important; --surface:#ffffff !important; --surface-2:#eef2f8 !important; --surface-elevated:#f8fafc !important;
-          --line:#cbd5e1 !important; --line-strong:#94a3b8 !important;
-          --fg:#0f172a !important; --muted:#334155 !important; --faint:#64748b !important;
-          --blue:#0a7aff !important; --purple:#9333ea !important; --orange:#ea580c !important; --green:#16a34a !important; --teal:#0891b2 !important; --red:#dc2626 !important;
-          --track:#e2e8f0 !important; --map1:#bfdbfe !important; --map2:#60a5fa !important; --map3:#0a7aff !important;
-          --shadow:0 2px 12px rgba(15,23,42,.08) !important;
-          --gh-0:#ebedf0 !important; --gh-1:#9be9a8 !important; --gh-2:#40c463 !important; --gh-3:#30a14e !important; --gh-4:#216e39 !important;
-          --seg-bg:#eef2f8 !important; --seg-btn:transparent !important; --seg-btn-hover:#e2e8f0 !important; --seg-active:#0a7aff !important;
-          --input-bg:#ffffff !important; --input-fg:#0f172a !important;
-        }
-        </style>
-        """
-        css_to_inject += "\n" + light_override
-    st.markdown(css_to_inject, unsafe_allow_html=True)
+        override = LIGHT_ROOT_CSS
+
+    full_css = CSS
+    if override:
+        if "</style>" in full_css:
+            full_css = full_css.replace("</style>", f"\n{override}\n</style>")
+        else:
+            full_css = f"<style>\n{override}\n</style>\n" + full_css
+
+    if hasattr(st, "html"):
+        st.html(full_css)
+    else:
+        st.markdown(full_css, unsafe_allow_html=True)
 
 
 def ring_svg(pct: float, color: str, size: int = 54) -> str:

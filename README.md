@@ -44,12 +44,13 @@ Her güç antrenmanı (Üst A, Alt A, Üst B), glikojen depolarını ve kas küt
 
 - **Karanlık / Aydınlık Mod:** `.streamlit/config.toml` dosyasında `base = "dark"` tanımlıdır.
 - **WCAG AA/AAA Kontrast:** Emotion sınıfları (`.e1fp86qc*`), sanal portal selectbox bileşenleri (`[data-baseweb="select"]`), calendar popover'ları özel CSS kurallarıyla koyu arka planda yüksek kontrastlı metin sağlayacak şekilde güvenceye alınmıştır.
+- **HTML/CSS Enjeksiyon Güvenliği:** `st.html` ve arındırılmış CSS şablonları kullanılarak CommonMark markdown parser'ının stil etiketlerini metin/kod bloğu olarak ekranda sızdırması (`<style>` leaks) engellenmiştir.
 
 ---
 
 ## Test ve Kalite Güvencesi
 
-Proje, 90+ otomatik birim ve Streamlit `AppTest` fonksiyonel testi ile korunur:
+Proje, 92 otomatik birim, erişilebilirlik ve 5 sayfanın CSS/bileşen bütünlüğünü denetleyen Streamlit `AppTest` fonksiyonel testi ile korunur:
 ```bash
 /usr/local/bin/python3 run_tests.py
 ```

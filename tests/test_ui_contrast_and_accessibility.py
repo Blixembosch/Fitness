@@ -176,3 +176,30 @@ def test_functional_nutrition_page_structure():
     # Verify number inputs and date inputs are rendered
     assert len(at.number_input) >= 1
     assert len(at.date_input) >= 1
+
+
+def test_no_css_syntax_leaks_or_code_blocks_across_all_pages():
+    """Guarantees that raw <style>, :root, CSS variables, or code blocks containing CSS
+    never leak onto the rendered UI as visible text on ANY page (home, plan, workout, stats, nutrition).
+    """
+    pages = ["home", "plan", "workout", "stats", "nutrition"]
+    for page in pages:
+        at = AppTest.from_file(APP_PATH, default_timeout=45)
+        at.run()
+        at.session_state["page"] = page
+        at.run()
+
+        assert not at.exception, f"Page {page} threw exceptions: {at.exception}"
+
+        # Check that no markdown block renders raw unparsed CSS / <style> tags
+        for i, m in enumerate(at.markdown):
+            val = m.value or ""
+            assert "<style>" not in val, f"Page {page} markdown[{i}] contains raw <style> tag: {val[:120]}"
+            assert "</style>" not in val, f"Page {page} markdown[{i}] contains raw </style> tag: {val[:120]}"
+            assert ":root" not in val, f"Page {page} markdown[{i}] contains raw :root CSS declaration: {val[:120]}"
+            assert "--bg:#" not in val and "--surface:#" not in val, f"Page {page} markdown[{i}] leaks raw CSS variables: {val[:120]}"
+
+        # Check that no code blocks were accidentally rendered for styling
+        for i, c in enumerate(at.code):
+            val = c.value or ""
+            assert "--bg:" not in val and ":root" not in val and "<style>" not in val, f"Page {page} code[{i}] leaked CSS block: {val[:120]}"
