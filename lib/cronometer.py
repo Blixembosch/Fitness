@@ -66,6 +66,8 @@ def clean_type(name: str) -> str:
 
 def is_padel(name: str) -> bool:
     n = _APPLE.sub("", str(name)).strip().lower()
+    if "atlas" in n:
+        return False
     return any(k in n for k in _PADEL)
 
 

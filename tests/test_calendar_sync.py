@@ -28,6 +28,14 @@ def test_is_padel_summary():
     assert calendar_sync.is_padel_summary("Şirket Toplantısı") is False
     assert calendar_sync.is_padel_summary("") is False
 
+    # Exclude Atlas's padel lessons and kids' sessions
+    assert calendar_sync.is_padel_summary("Atlas Padel") is False
+    assert calendar_sync.is_padel_summary("Atlas Padel Dersi") is False
+    assert calendar_sync.is_padel_summary("Atlas'ın Padel Dersi") is False
+    assert calendar_sync.is_padel_summary("Padel (Atlas)") is False
+    assert calendar_sync.is_padel_summary("Padel Dersi", description="Atlas için") is False
+    assert calendar_sync.is_padel_summary("Çocuk Padel Grubu") is False
+
 
 def test_parse_ics_extracts_events():
     sample_ics = """BEGIN:VCALENDAR
@@ -52,10 +60,16 @@ DTEND:20261026T180000
 SUMMARY:Padel İptal
 STATUS:CANCELLED
 END:VEVENT
+BEGIN:VEVENT
+DTSTART:20261027T160000
+DTEND:20261027T170000
+SUMMARY:Atlas Padel Dersi
+STATUS:CONFIRMED
+END:VEVENT
 END:VCALENDAR"""
 
     events = calendar_sync.parse_ics(sample_ics)
-    assert len(events) == 2  # Cancelled event omitted
+    assert len(events) == 3  # Cancelled event omitted, 3 confirmed events
 
     padel_ev = next(e for e in events if e["summary"] == "Padel Maçı")
     assert padel_ev["date"] == "2026-10-24"
@@ -66,6 +80,9 @@ END:VCALENDAR"""
 
     non_padel = next(e for e in events if e["summary"] == "Proje Görüşmesi")
     assert non_padel["is_padel"] is False
+
+    atlas_ev = next(e for e in events if e["summary"] == "Atlas Padel Dersi")
+    assert atlas_ev["is_padel"] is False
 
 
 def test_parse_ics_recurring_rrule():

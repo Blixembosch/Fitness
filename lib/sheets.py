@@ -80,7 +80,7 @@ def parse_workouts(df: pd.DataFrame) -> pd.DataFrame:
 def padel_dates(workouts: pd.DataFrame) -> list[str]:
     if workouts is None or workouts.empty:
         return []
-    mask = workouts["type"].astype(str).str.lower().apply(lambda s: any(k in s for k in _PADEL))
+    mask = workouts["type"].astype(str).str.lower().apply(lambda s: any(k in s for k in _PADEL) and "atlas" not in s)
     return sorted(set(workouts.loc[mask, "date"]))
 
 

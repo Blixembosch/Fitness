@@ -43,6 +43,7 @@ GOOGLE_CALENDAR_ICAL_URL = "https://calendar.google.com/calendar/ical/SENIN_EMAI
 ## 4. Nasıl Çalışır?
 
 - Takvim etkinlik başlıklarında `Padel`, `Padel Maçı`, `Peak Padel`, `Padel w/ Mert` veya `Tennis` kelimeleri arandığında seans otomatik yakalanır.
+- **Atlas'ın Dersleri Hariç Tutulur:** Takvimde başlığında veya açıklamasında `Atlas`, `çocuk`, `junior` geçen etkinlikler otomatik olarak filtrelenir ve yalnızca Anıl'ın kendi maçları programa dahil edilir.
 - Tek seferlik maçlar ve haftalık tekrarlanan etkinlikler (`RRULE`) desteklenir.
 - Etkinlik saati (örn. `19:30`) ve kulüp konumu (örn. `Peak Padel Club`) Ana Sayfa ve Antrenman sekmesinde gösterilir.
 - Takvimde Padel olan günlerde günün programı otomatik olarak Padel odaklı dinamik moda geçer.

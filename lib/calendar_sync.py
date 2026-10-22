@@ -14,6 +14,7 @@ import urllib.request
 from datetime import date, datetime, timedelta, timezone
 
 _PADEL_KEYWORDS = ("padel", "tennis", "tenis", "raket", "racquet")
+_EXCLUDE_KEYWORDS = ("atlas", "çocuk", "junior", "kid")
 _DAY_MAP = {"MO": 0, "TU": 1, "WE": 2, "TH": 3, "FR": 4, "SA": 5, "SU": 6}
 
 
@@ -97,9 +98,16 @@ def _parse_dt(dt_str: str) -> tuple[str | None, str | None, datetime | None]:
     return iso_date, f"{hh:02d}:{mm:02d}", datetime(y, m, d, hh, mm)
 
 
-def is_padel_summary(summary: str) -> bool:
-    """Check if event summary matches padel or racquet activity."""
+def is_padel_summary(summary: str, description: str = "") -> bool:
+    """Check if event summary matches Anıl's padel or racquet activity (excluding Atlas's events)."""
     s = (summary or "").lower()
+    desc = (description or "").lower()
+    combined = f"{s} {desc}"
+
+    # Explicitly exclude Atlas's sessions/lessons
+    if any(k in combined for k in _EXCLUDE_KEYWORDS):
+        return False
+
     return any(k in s for k in _PADEL_KEYWORDS)
 
 
@@ -186,7 +194,8 @@ def parse_ics(
 
             summary = _unescape_ics(current.get("SUMMARY", ""))
             location = _unescape_ics(current.get("LOCATION", ""))
-            is_padel = is_padel_summary(summary)
+            description = _unescape_ics(current.get("DESCRIPTION", ""))
+            is_padel = is_padel_summary(summary, description)
 
             dtstart_raw = current.get("DTSTART", "")
             dtend_raw = current.get("DTEND", "")
@@ -222,7 +231,7 @@ def parse_ics(
         if in_event and ":" in line:
             prop_key = line.split(":", 1)[0].split(";")[0].upper().strip()
             # Store full property specification if needed, or key value
-            if prop_key in ("SUMMARY", "LOCATION", "STATUS", "RRULE"):
+            if prop_key in ("SUMMARY", "LOCATION", "STATUS", "RRULE", "DESCRIPTION"):
                 current[prop_key] = line.split(":", 1)[1]
             elif prop_key in ("DTSTART", "DTEND"):
                 current[prop_key] = line
