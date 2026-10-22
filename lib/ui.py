@@ -42,14 +42,38 @@ html, body, .stApp, [data-testid="stAppViewContainer"], [data-testid="stMain"] {
   background:var(--bg) !important;
   color:var(--fg) !important;
   font-family:"Hanken Grotesk",system-ui,sans-serif;
+  font-size:13.5px;
 }
 .stMarkdown, [data-testid="stMarkdownContainer"], p, span, div, label {
   font-family:"Hanken Grotesk",system-ui,sans-serif;
   color:inherit;
 }
-h1, h2, h3, h4 {
+.stMarkdown p, [data-testid="stMarkdownContainer"] p {
+  font-size:13px;
+  line-height:1.5;
+}
+h1 {
   font-family:"Nunito",sans-serif !important;
   letter-spacing:-.02em;
+  font-size:22px !important;
+  color:var(--fg) !important;
+}
+h2 {
+  font-family:"Nunito",sans-serif !important;
+  letter-spacing:-.02em;
+  font-size:18px !important;
+  color:var(--fg) !important;
+}
+h3 {
+  font-family:"Nunito",sans-serif !important;
+  letter-spacing:-.02em;
+  font-size:15px !important;
+  color:var(--fg) !important;
+}
+h4 {
+  font-family:"Nunito",sans-serif !important;
+  letter-spacing:-.02em;
+  font-size:13.5px !important;
   color:var(--fg) !important;
 }
 .block-container{ padding-top:1.1rem; padding-bottom:3rem; max-width:1180px; }
@@ -106,8 +130,8 @@ div[data-baseweb="button-group"] button {
   border-radius:10px !important;
   font-family:"Nunito",sans-serif !important;
   font-weight:800 !important;
-  font-size:13.5px !important;
-  padding:6px 16px !important;
+  font-size:12.5px !important;
+  padding:5px 14px !important;
   transition:all .15s ease !important;
 }
 div.stButtonGroup button:hover,
@@ -180,7 +204,7 @@ div[data-testid="stSelectbox"] div[class*="e1fp86qc1"] {
   color:var(--input-fg) !important;
   -webkit-text-fill-color:var(--input-fg) !important;
   font-family:"Hanken Grotesk",system-ui,sans-serif !important;
-  font-size:14px !important;
+  font-size:13px !important;
   font-weight:600 !important;
 }
 
@@ -226,9 +250,9 @@ ul[role="listbox"] [role="option"],
 ul[role="listbox"] li {
   color:var(--fg) !important;
   font-family:"Hanken Grotesk",system-ui,sans-serif !important;
-  font-size:13.5px !important;
+  font-size:12.5px !important;
   font-weight:600 !important;
-  padding:8px 12px !important;
+  padding:6px 12px !important;
   cursor:pointer !important;
 }
 
@@ -278,6 +302,7 @@ div[data-testid="stDateInputField"] input,
   background-color:transparent !important;
   color:var(--input-fg) !important;
   -webkit-text-fill-color:var(--input-fg) !important;
+  font-size:13px !important;
 }
 
 /* Number input increment/decrement buttons */
@@ -342,7 +367,7 @@ label,
 div[data-testid="stCheckbox"] label span {
   color:var(--fg) !important;
   font-weight:700 !important;
-  font-size:13.5px !important;
+  font-size:12.5px !important;
 }
 
 /* Exercise card internal layout */
@@ -359,7 +384,7 @@ div[data-testid="stCheckbox"] label span {
   min-height:84px;
 }
 .excard-title{
-  font-weight:800; font-size:15px; line-height:1.25; color:var(--fg) !important;
+  font-weight:800; font-size:13.5px; line-height:1.25; color:var(--fg) !important;
   display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical;
   overflow:hidden; min-height:2.5em;
 }
@@ -369,8 +394,8 @@ div[data-testid="stCheckbox"] label span {
 
 /* Section divider separating workout cards from bottom utilities */
 .section-divider{
-  display:flex; align-items:center; gap:14px; margin:22px 0 14px;
-  color:var(--faint); font-size:12px; font-weight:800; text-transform:uppercase; letter-spacing:.09em;
+  display:flex; align-items:center; gap:14px; margin:20px 0 12px;
+  color:var(--faint); font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:.09em;
 }
 .section-divider::before, .section-divider::after{
   content:""; flex:1; height:1px; background:var(--line);
@@ -381,46 +406,46 @@ div[data-testid="stCheckbox"] label span {
   border-radius:20px; padding:14px 16px; box-shadow:var(--shadow); color:var(--fg); }
 
 .fcard{ background:var(--surface); border:1px solid var(--line); border-radius:20px; padding:16px; margin-bottom:12px; box-shadow:var(--shadow); color:var(--fg); }
-.eyebrow{ font-size:11.5px; text-transform:uppercase; letter-spacing:.11em; color:var(--faint) !important; font-weight:800; margin:0 0 10px; }
+.eyebrow{ font-size:10.5px; text-transform:uppercase; letter-spacing:.11em; color:var(--faint) !important; font-weight:800; margin:0 0 10px; }
 .muted{ color:var(--muted) !important; }
 .rings{ display:grid; grid-template-columns:repeat(4,1fr); gap:10px; margin-bottom:10px; }
 
 .counter{ display:flex; align-items:center; gap:18px; background:
   radial-gradient(120% 140% at 0% 0%, color-mix(in srgb,var(--blue) 26%,transparent), transparent 58%),
   linear-gradient(160deg, var(--surface), var(--surface-2)); border:1px solid color-mix(in srgb,var(--blue) 35%,var(--line));
-  border-radius:22px; padding:18px 22px; margin-bottom:12px; flex-wrap:wrap; box-shadow:var(--shadow); color:var(--fg); }
-.counter .big{ font-family:"Nunito"; font-weight:900; font-size:46px; line-height:.9; color:var(--fg) !important; }
-.counter .big small{ font-size:16px; color:var(--muted) !important; font-weight:800; }
-.counter .lbl{ font-size:12px; color:var(--muted) !important; font-weight:700; text-transform:uppercase; letter-spacing:.08em; margin-top:4px; }
+  border-radius:22px; padding:16px 20px; margin-bottom:12px; flex-wrap:wrap; box-shadow:var(--shadow); color:var(--fg); }
+.counter .big{ font-family:"Nunito"; font-weight:900; font-size:34px; line-height:.9; color:var(--fg) !important; }
+.counter .big small{ font-size:13px; color:var(--muted) !important; font-weight:800; }
+.counter .lbl{ font-size:11px; color:var(--muted) !important; font-weight:700; text-transform:uppercase; letter-spacing:.08em; margin-top:4px; }
 .weekdots{ display:flex; gap:7px; margin-top:7px; }
 .weekdots i{ width:11px; height:11px; border-radius:50%; background:var(--surface-2); border:1px solid var(--line); }
 .weekdots i.on{ background:var(--green); border-color:var(--green); }
 
 .ringcard{ background:var(--surface); border:1px solid var(--line); border-radius:18px; padding:12px 3px 10px; text-align:center; box-shadow:var(--shadow); color:var(--fg); }
-.ringcard .v{ font-family:"Nunito"; font-weight:800; font-size:14px; margin-top:6px; line-height:1; color:var(--fg) !important; }
+.ringcard .v{ font-family:"Nunito"; font-weight:800; font-size:13px; margin-top:6px; line-height:1; color:var(--fg) !important; }
 .ringcard .v small{ color:var(--muted) !important; font-weight:700; font-size:.82em; }
-.ringcard .k{ font-size:11px; color:var(--muted) !important; font-weight:600; margin-top:4px; }
+.ringcard .k{ font-size:10.5px; color:var(--muted) !important; font-weight:600; margin-top:4px; }
 
-.hero{ border-radius:24px; padding:20px; margin-bottom:10px; position:relative; overflow:hidden; box-shadow:var(--shadow); color:var(--fg); }
-.hero .kick{ font-size:11.5px; font-weight:800; text-transform:uppercase; letter-spacing:.1em; }
-.hero h2{ font-size:26px; font-weight:900; margin:8px 0 4px; color:var(--fg) !important; }
+.hero{ border-radius:24px; padding:18px; margin-bottom:10px; position:relative; overflow:hidden; box-shadow:var(--shadow); color:var(--fg); }
+.hero .kick{ font-size:10.5px; font-weight:800; text-transform:uppercase; letter-spacing:.1em; }
+.hero h2{ font-size:20px; font-weight:900; margin:6px 0 4px; color:var(--fg) !important; }
 .chiprow{ display:flex; flex-wrap:wrap; gap:6px; margin:6px 0 2px; }
-.chip{ font-size:11.5px; font-weight:700; padding:3px 9px; border-radius:999px; background:var(--surface-2); color:var(--muted); border:1px solid var(--line); }
+.chip{ font-size:10.5px; font-weight:700; padding:3px 8px; border-radius:999px; background:var(--surface-2); color:var(--muted); border:1px solid var(--line); }
 
 .tiles{ display:grid; grid-template-columns:repeat(auto-fit,minmax(148px,1fr)); gap:11px; margin-bottom:12px; }
-.tile{ background:var(--surface); border:1px solid var(--line); border-radius:18px; padding:15px; box-shadow:var(--shadow); color:var(--fg); }
-.tile .k{ font-size:11.5px; color:var(--muted) !important; font-weight:700; text-transform:uppercase; letter-spacing:.04em; }
-.tile .v{ font-family:"Nunito"; font-weight:900; font-size:26px; margin-top:7px; line-height:1; color:var(--fg) !important; }
-.tile .v small{ font-size:14px; color:var(--muted) !important; font-weight:800; }
-.tile .d{ font-size:12px; font-weight:700; margin-top:6px; color:var(--muted); }
+.tile{ background:var(--surface); border:1px solid var(--line); border-radius:18px; padding:14px; box-shadow:var(--shadow); color:var(--fg); }
+.tile .k{ font-size:10.5px; color:var(--muted) !important; font-weight:700; text-transform:uppercase; letter-spacing:.04em; }
+.tile .v{ font-family:"Nunito"; font-weight:900; font-size:21px; margin-top:6px; line-height:1; color:var(--fg) !important; }
+.tile .v small{ font-size:12.5px; color:var(--muted) !important; font-weight:800; }
+.tile .d{ font-size:11px; font-weight:700; margin-top:5px; color:var(--muted); }
 .good{ color:var(--green)!important; } .bad{ color:var(--red)!important; }
 
-.legend{ display:flex; gap:6px; align-items:center; justify-content:center; margin-top:8px; font-size:11px; color:var(--muted); font-weight:600; }
+.legend{ display:flex; gap:6px; align-items:center; justify-content:center; margin-top:8px; font-size:10.5px; color:var(--muted); font-weight:600; }
 .legend i{ width:14px; height:9px; border-radius:3px; display:inline-block; }
 .bars{ display:flex; flex-direction:column; gap:13px; }
 .bar .bhead{ display:flex; justify-content:space-between; align-items:baseline; margin-bottom:5px; }
 .bar .bl{ font-weight:700; color:var(--fg); } .bar.primary .bl{ font-size:1.06em; }
-.bar .bv{ color:var(--muted); font-weight:600; font-size:13px; }
+.bar .bv{ color:var(--muted); font-weight:600; font-size:12px; }
 .btrack{ height:8px; border-radius:6px; background:var(--surface-2); overflow:hidden; }
 .bar.primary .btrack{ height:11px; }
 .bfill{ height:100%; border-radius:6px; }
@@ -428,16 +453,16 @@ div[data-testid="stCheckbox"] label span {
 /* GitHub-style Contribution Heatmap */
 .gh-card{ background:var(--surface); border:1px solid var(--line); border-radius:20px; padding:18px 20px; margin-bottom:12px; box-shadow:var(--shadow); color:var(--fg); }
 .gh-top{ display:flex; justify-content:space-between; align-items:baseline; flex-wrap:wrap; gap:10px; margin-bottom:12px; }
-.gh-title{ font-family:"Nunito",sans-serif; font-weight:800; font-size:16px; color:var(--fg); }
-.gh-pills{ display:flex; gap:8px; flex-wrap:wrap; font-size:12px; font-weight:700; color:var(--fg); }
+.gh-title{ font-family:"Nunito",sans-serif; font-weight:800; font-size:14px; color:var(--fg); }
+.gh-pills{ display:flex; gap:8px; flex-wrap:wrap; font-size:11px; font-weight:700; color:var(--fg); }
 .gh-pill{ background:var(--surface-2); border:1px solid var(--line); padding:3px 10px; border-radius:999px; display:inline-flex; align-items:center; gap:6px; }
 .gh-dot{ width:8px; height:8px; border-radius:50%; display:inline-block; }
 .gh-scroll{ overflow-x:auto; padding-bottom:4px; }
 .gh-board{ min-width:680px; }
-.gh-months{ display:grid; gap:3px; margin-left:34px; margin-bottom:6px; font-size:11.5px; color:var(--muted); font-weight:700; line-height:1; }
+.gh-months{ display:grid; gap:3px; margin-left:34px; margin-bottom:6px; font-size:10.5px; color:var(--muted); font-weight:700; line-height:1; }
 .gh-months span{ white-space:nowrap; overflow:visible; }
 .gh-body{ display:flex; align-items:stretch; gap:6px; }
-.gh-days{ display:grid; grid-template-rows:repeat(7,1fr); gap:3px; width:28px; font-size:11px; color:var(--muted); font-weight:600; text-align:left; }
+.gh-days{ display:grid; grid-template-rows:repeat(7,1fr); gap:3px; width:28px; font-size:10px; color:var(--muted); font-weight:600; text-align:left; }
 .gh-days span{ display:flex; align-items:center; line-height:1; }
 .gh-weeks{ flex:1; display:grid; grid-template-rows:repeat(7,1fr); grid-auto-flow:column; gap:3px; }
 .gh-cell{ aspect-ratio:1/1; min-width:11px; border-radius:3px; background:var(--gh-0); outline:1px solid rgba(128,128,128,.10); transition:transform .1s ease; }
@@ -448,8 +473,8 @@ div[data-testid="stCheckbox"] label span {
 .gh-cell.l4{ background:var(--gh-4); }
 .gh-cell.today{ outline:2px solid var(--blue); outline-offset:1px; }
 .gh-cell.future{ opacity:.30; }
-.gh-foot{ display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-top:12px; padding-top:10px; border-top:1px solid var(--line); font-size:12px; color:var(--muted); }
-.gh-scale{ display:flex; align-items:center; gap:4px; font-size:11.5px; color:var(--muted); font-weight:600; }
+.gh-foot{ display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-top:12px; padding-top:10px; border-top:1px solid var(--line); font-size:11px; color:var(--muted); }
+.gh-scale{ display:flex; align-items:center; gap:4px; font-size:10.5px; color:var(--muted); font-weight:600; }
 .gh-scale i{ width:11px; height:11px; border-radius:2.5px; display:inline-block; outline:1px solid rgba(128,128,128,.12); }
 
 /* Weekly, Monthly & Calendar Strips */
@@ -627,10 +652,23 @@ div[data-testid="stVerticalBlockBorderWrapper"]:has(.wo-done-marker) .stButton:f
 
 /* File uploader styling */
 [data-testid="stFileUploader"] section {
-  background:var(--surface) !important; border:1.5px dashed var(--line) !important; border-radius:16px !important; color:var(--fg) !important;
+  background:var(--surface) !important;
+  border:1.5px dashed var(--line) !important;
+  border-radius:14px !important;
+  color:var(--fg) !important;
+  padding:10px 14px !important;
 }
 [data-testid="stFileUploader"] button {
-  background:var(--surface-2) !important; color:var(--fg) !important; border:1px solid var(--line) !important;
+  background:var(--surface-2) !important;
+  color:var(--fg) !important;
+  border:1px solid var(--line) !important;
+  font-size:12px !important;
+  padding:4px 12px !important;
+  border-radius:8px !important;
+}
+[data-testid="stFileUploader"] small {
+  font-size:11px !important;
+  color:var(--muted) !important;
 }
 
 /* Captions and explanatory text — bright, readable silver, NOT faint dark grey */
@@ -641,19 +679,41 @@ div[data-testid="stVerticalBlockBorderWrapper"]:has(.wo-done-marker) .stButton:f
 .stCaption div {
   color:var(--muted) !important;
   font-weight:600 !important;
-  font-size:12.5px !important;
-  line-height:1.45 !important;
+  font-size:11.5px !important;
+  line-height:1.4 !important;
 }
 
-/* Alert boxes (st.info, st.success, st.warning) */
+/* Alert boxes (st.info, st.success, st.warning) - compact, ergonomic card style */
 [data-testid="stAlert"] {
   background:var(--surface-2) !important;
   border:1px solid var(--line) !important;
-  border-radius:14px !important;
+  border-radius:12px !important;
   color:var(--fg) !important;
+  padding:8px 14px !important;
+  font-size:12px !important;
+  line-height:1.4 !important;
+  margin-bottom:8px !important;
 }
+[data-testid="stAlert"] [data-testid="stMarkdownContainer"] p,
+[data-testid="stAlert"] [data-testid="stMarkdownContainer"] span,
+[data-testid="stAlert"] [data-testid="stMarkdownContainer"] div,
 [data-testid="stAlert"] * {
   color:var(--fg) !important;
+  font-size:12px !important;
+  line-height:1.4 !important;
+}
+[data-testid="stAlert"] svg {
+  width:16px !important;
+  height:16px !important;
+}
+
+/* Buttons */
+.stButton button,
+div[data-testid="stButton"] button {
+  font-size:12.5px !important;
+  font-weight:700 !important;
+  padding:6px 14px !important;
+  border-radius:10px !important;
 }
 hr{ border-color:var(--line); }
 </style>
@@ -727,11 +787,11 @@ def ring_svg(pct: float, color: str, size: int = 54) -> str:
 
 def page_header(title: str, subtitle: str = "", badge: str = "") -> str:
     """Standardized page header used uniformly across all 5 dashboard tabs."""
-    badge_html = f'<span class="chip" style="font-size:11.5px;color:var(--teal);margin-inline-start:10px">{badge}</span>' if badge else ""
-    sub_html = f'<div class="muted" style="font-size:13.5px;margin-top:2px">{subtitle}</div>' if subtitle else ""
+    badge_html = f'<span class="chip" style="font-size:10.5px;color:var(--teal);margin-inline-start:8px">{badge}</span>' if badge else ""
+    sub_html = f'<div class="muted" style="font-size:12.5px;margin-top:2px">{subtitle}</div>' if subtitle else ""
     return (
-        f'<div style="margin-bottom:14px">'
-        f'<div style="display:flex;align-items:center"><h1 style="margin:0 0 2px;font-size:28px">{title}</h1>{badge_html}</div>'
+        f'<div style="margin-bottom:12px">'
+        f'<div style="display:flex;align-items:center"><h1 style="margin:0 0 2px;font-size:23px">{title}</h1>{badge_html}</div>'
         f'{sub_html}</div>'
     )
 
@@ -759,13 +819,13 @@ def bar(label: str, value: str, pct: float, color: str, primary: bool = False) -
 def metric_row(label: str, value: str, target: str, cls: str, verdict: str, note: str) -> str:
     dot = {"good": "var(--green)", "bad": "var(--red)", "": "var(--faint)"}.get(cls, "var(--faint)")
     return (
-        f'<div style="padding:12px 0;border-top:1px solid var(--line);color:var(--fg)">'
+        f'<div style="padding:10px 0;border-top:1px solid var(--line);color:var(--fg)">'
         f'<div style="display:flex;justify-content:space-between;align-items:baseline;gap:10px">'
-        f'<span style="font-weight:700;font-size:14px;color:var(--fg)">{label}</span>'
-        f'<span style="font-family:Nunito;font-weight:800;font-size:16px;color:var(--fg)">{value}</span></div>'
+        f'<span style="font-weight:700;font-size:13px;color:var(--fg)">{label}</span>'
+        f'<span style="font-family:Nunito;font-weight:800;font-size:14.5px;color:var(--fg)">{value}</span></div>'
         f'<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-top:3px">'
-        f'<span class="muted" style="font-size:12px">{note}</span>'
-        f'<span style="font-size:11.5px;font-weight:700;color:{dot};white-space:nowrap">'
+        f'<span class="muted" style="font-size:11.5px">{note}</span>'
+        f'<span style="font-size:11px;font-weight:700;color:{dot};white-space:nowrap">'
         f'<span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:{dot};margin-inline-end:5px"></span>'
         f'{verdict} · hedef {target}</span></div></div>'
     )
@@ -873,7 +933,7 @@ def github_heatmap(
     return (
         '<div class="gh-card">'
         '<div class="gh-top">'
-        f'<div class="gh-title">{active_days} aktif gün <span style="color:var(--muted);font-weight:600;font-size:13.5px">· son 1 yılda (bu ay {this_month_active} gün)</span></div>'
+        f'<div class="gh-title">{active_days} aktif gün <span style="color:var(--muted);font-weight:600;font-size:12.5px">· son 1 yılda (bu ay {this_month_active} gün)</span></div>'
         '<div class="gh-pills">'
         f'<span class="gh-pill"><i class="gh-dot" style="background:var(--blue)"></i>{str_cnt} güç</span>'
         f'<span class="gh-pill"><i class="gh-dot" style="background:var(--teal)"></i>{pad_cnt} padel</span>'

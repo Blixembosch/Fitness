@@ -43,6 +43,7 @@ Her güç antrenmanı (Üst A, Alt A, Üst B), glikojen depolarını ve kas küt
 ## Tasarım, Tema ve Erişilebilirlik Güvencesi
 
 - **Karanlık / Aydınlık Mod:** `.streamlit/config.toml` dosyasında `base = "dark"` tanımlıdır.
+- **Ergonomik Tipografi & Kompakt Yerleşim:** Arayüz yazı boyutları (13.5px baz, 23px h1, 12px kompakt alert kutuları) mobil ve masaüstünde göz yormayan, dengeli ve ergonomik bir hiyerarşide standartlaştırılmıştır; `st.info` ve uyarı kutuları ekranı kaplamayan şık kart formatına dönüştürülmüştür.
 - **WCAG AA/AAA Kontrast:** Emotion sınıfları (`.e1fp86qc*`), sanal portal selectbox bileşenleri (`[data-baseweb="select"]`), calendar popover'ları özel CSS kurallarıyla koyu arka planda yüksek kontrastlı metin sağlayacak şekilde güvenceye alınmıştır.
 - **HTML/CSS Enjeksiyon Güvenliği:** `st.html` ve arındırılmış CSS şablonları kullanılarak CommonMark markdown parser'ının stil etiketlerini metin/kod bloğu olarak ekranda sızdırması (`<style>` leaks) engellenmiştir.
 

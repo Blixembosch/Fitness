@@ -156,7 +156,7 @@ def test_functional_page_headers_consistent_markup():
     assert "Test Title" in h
     assert "Test Subtitle" in h
     assert "Badge" in h
-    assert "font-size:28px" in h
+    assert "font-size:23px" in h
     assert 'class="muted"' in h
 
 

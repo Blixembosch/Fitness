@@ -628,8 +628,8 @@ def _counter_card():
         return (
             "<div class='counter'>"
             f"<div><div class='big'>{n}<small> gün</small></div><div class='lbl'>Başlangıca · {start_fmt}</div></div>"
-            "<div style='flex:1;min-width:140px'><div style='font-weight:800;font-size:16px;color:var(--fg)'>12 haftalık program · Hazırlık Fazı</div>"
-            f"<div class='muted' style='font-size:13.5px;margin-top:4px'>Resmi 12 haftalık sayaç {start_fmt}'de başlıyor; bu süreçteki tüm antrenman ve tartımların kaydediliyor.</div></div>"
+            "<div style='flex:1;min-width:140px'><div style='font-weight:800;font-size:14.5px;color:var(--fg)'>12 haftalık program · Hazırlık Fazı</div>"
+            f"<div class='muted' style='font-size:12px;margin-top:3px'>Resmi 12 haftalık sayaç {start_fmt}'de başlıyor; bu süreçteki tüm antrenman ve tartımların kaydediliyor.</div></div>"
             "</div>"
         )
     grid = program_week_grid(WEEK_START)
@@ -639,8 +639,8 @@ def _counter_card():
         "<div class='counter'>"
         f"<div><div class='big'>{pp['week']}<small>/{PROGRAM_WEEKS}</small></div><div class='lbl'>Hafta · 12 haftalık program</div></div>"
         "<div style='flex:1;min-width:160px'>"
-        f"<div style='font-weight:800;font-size:14px;color:var(--fg)'>Bu hafta planı</div><div class='weekdots'>{dots}</div>"
-        f"<div style='height:7px;border-radius:5px;background:var(--surface-2);margin-top:10px;overflow:hidden'>"
+        f"<div style='font-weight:800;font-size:13px;color:var(--fg)'>Bu hafta planı</div><div class='weekdots'>{dots}</div>"
+        f"<div style='height:7px;border-radius:5px;background:var(--surface-2);margin-top:8px;overflow:hidden'>"
         f"<div style='height:100%;width:{pct}%;background:var(--blue);border-radius:5px'></div></div></div>"
         "</div>"
     )
@@ -686,7 +686,7 @@ def page_home():
                 f"<div class='hero' style='background:radial-gradient(130% 90% at 100% 0%, color-mix(in srgb,{color} 30%,transparent), transparent 60%), linear-gradient(165deg, color-mix(in srgb,{color} 14%,var(--surface)), var(--surface) 78%); border:1px solid color-mix(in srgb,{color} 35%,var(--line))'>"
                 f"<div class='kick' style='color:{color}'>● {day['tag']} · {rpe_lbl}</div>"
                 f"<h2>{day['name']}</h2><div class='chiprow'>{chips}</div>"
-                f"<div class='muted' style='font-size:13px;margin-top:8px'>{len(steps)} adım ({load['exercises']} güç + Eliptik & Kürek) · {load['sets']} güç seti + 25 dk yağ yakım kardiyo</div></div>",
+                f"<div class='muted' style='font-size:12px;margin-top:6px'>{len(steps)} adım ({load['exercises']} güç + Eliptik & Kürek) · {load['sets']} güç seti + 25 dk yağ yakım kardiyo</div></div>",
                 unsafe_allow_html=True,
             )
             st.button("▶ Antrenmana git", type="primary", use_container_width=True, on_click=navigate, args=("workout",))
@@ -699,7 +699,7 @@ def page_home():
             st.markdown(
                 f"<div class='hero' style='background:linear-gradient(165deg, color-mix(in srgb,{color} 12%,var(--surface)), var(--surface) 80%);border:1px solid var(--line)'>"
                 f"<div class='kick' style='color:{color}'>● {day['tag'] or 'Bugün'}</div>"
-                f"<h2>{day['name']}</h2><div class='muted' style='font-size:13px;margin-top:6px'>{day.get('note','')}</div>{extra}</div>",
+                f"<h2>{day['name']}</h2><div class='muted' style='font-size:12px;margin-top:4px'>{day.get('note','')}</div>{extra}</div>",
                 unsafe_allow_html=True,
             )
 
@@ -711,14 +711,14 @@ def page_home():
             if delta != 0 and started:
                 dcls = "good" if delta < 0 else "bad"
                 lbl = "başlangıçtan"
-                note = f"<span class='{dcls}' style='margin-inline-start:auto;font-weight:700;font-size:13px'>{'↓' if delta<0 else '↑'} {abs(delta):.1f} kg {lbl}</span>"
+                note = f"<span class='{dcls}' style='margin-inline-start:auto;font-weight:700;font-size:12px'>{'↓' if delta<0 else '↑'} {abs(delta):.1f} kg {lbl}</span>"
             else:
-                note = f"<span style='margin-inline-start:auto;color:var(--muted);font-weight:700;font-size:13px'>baz: {start_fmt}</span>"
+                note = f"<span style='margin-inline-start:auto;color:var(--muted);font-weight:700;font-size:12px'>baz: {start_fmt}</span>"
             st.markdown(
                 f"<div class='fcard' style='margin-bottom:10px'><div class='eyebrow'>Vücut ağırlığı</div>"
                 f"<div style='display:flex;align-items:flex-end;gap:10px'>"
-                f"<span style='font-family:Nunito;font-weight:900;font-size:36px;line-height:.95;color:var(--fg)'>{w:.1f}</span>"
-                f"<span style='color:var(--muted);font-weight:700'>kg</span>{note}"
+                f"<span style='font-family:Nunito;font-weight:900;font-size:28px;line-height:.95;color:var(--fg)'>{w:.1f}</span>"
+                f"<span style='color:var(--muted);font-weight:700;font-size:13px'>kg</span>{note}"
                 f"</div></div>",
                 unsafe_allow_html=True,
             )
@@ -726,18 +726,18 @@ def page_home():
         ws = wegovy_status()
         w_badge_col = "var(--green)" if ws["logged_today"] else ("var(--orange)" if ws["days_until"] == 0 else "var(--purple)")
         w_tip = (
-            "<div style='font-size:12px;color:var(--orange);margin-top:6px'>⚡ İlk 48s penceresi: antrenmanda RPE'yi ~1 puan esnet, su tüketimini artır.</div>"
+            "<div style='font-size:11.5px;color:var(--orange);margin-top:5px'>⚡ İlk 48s penceresi: antrenmanda RPE'yi ~1 puan esnet, su tüketimini artır.</div>"
             if ws["in_48h"] else
-            f"<div class='muted' style='font-size:12px;margin-top:4px'>Sıradaki önerilen bölge: <b style='color:var(--fg)'>{ws['next_site']}</b></div>"
+            f"<div class='muted' style='font-size:11.5px;margin-top:4px'>Sıradaki önerilen bölge: <b style='color:var(--fg)'>{ws['next_site']}</b></div>"
         )
         st.markdown(
             f"<div class='fcard' style='margin-bottom:10px;border-color:color-mix(in srgb,{w_badge_col} 35%,var(--line))'>"
             f"<div style='display:flex;justify-content:space-between;align-items:center'>"
             f"<div class='eyebrow' style='margin:0'>💉 Wegovy · GLP-1</div>"
-            f"<span class='chip' style='color:{w_badge_col};font-size:11px'>{ws['sched_lbl']}</span></div>"
+            f"<span class='chip' style='color:{w_badge_col};font-size:10.5px'>{ws['sched_lbl']}</span></div>"
             f"<div style='display:flex;align-items:baseline;gap:8px;margin-top:6px'>"
-            f"<span style='font-family:Nunito;font-weight:900;font-size:24px;color:var(--fg)'>{ws['dose_mg']:g} mg</span>"
-            f"<span class='muted' style='font-size:12.5px'>· her {ws['inj_day_name']}</span></div>"
+            f"<span style='font-family:Nunito;font-weight:900;font-size:20px;color:var(--fg)'>{ws['dose_mg']:g} mg</span>"
+            f"<span class='muted' style='font-size:11.5px'>· her {ws['inj_day_name']}</span></div>"
             f"{w_tip}</div>",
             unsafe_allow_html=True,
         )
@@ -758,7 +758,7 @@ def page_home():
         if cal_today:
             t_str = f" · Saat {cal_today['start_time']}" if cal_today.get("start_time") else ""
             l_str = f" ({cal_today['location']})" if cal_today.get("location") else ""
-            cal_extra = f"<div style='font-size:12px;color:var(--teal);margin-top:5px;font-weight:700'>📅 Google Takvim: {cal_today['summary']}{t_str}{l_str}</div>"
+            cal_extra = f"<div style='font-size:11.5px;color:var(--teal);margin-top:5px;font-weight:700'>📅 Google Takvim: {cal_today['summary']}{t_str}{l_str}</div>"
         pad_badge_col = "var(--green)" if pad_today else "var(--teal)"
         pad_lbl = "Bugün oynandı ✓" if pad_today else ("Takvimde planlandı 📅" if cal_today else "Bugün oynanmadı")
         extra_note = f" · Hedef aşıldı 🔥 ({pad}/{ptarg})" if pad > ptarg else (f" · Hedef tamam ✓" if pad == ptarg else "")
@@ -766,11 +766,11 @@ def page_home():
             f"<div class='fcard' style='margin-bottom:10px;border-color:color-mix(in srgb,{pad_badge_col} 35%,var(--line))'>"
             f"<div style='display:flex;justify-content:space-between;align-items:center'>"
             f"<div class='eyebrow' style='margin:0'>🎾 Padel Seansı</div>"
-            f"<span class='chip' style='color:{pad_badge_col};font-size:11px'>{pad_lbl}</span></div>"
+            f"<span class='chip' style='color:{pad_badge_col};font-size:10.5px'>{pad_lbl}</span></div>"
             f"<div style='display:flex;align-items:baseline;gap:8px;margin-top:6px'>"
-            f"<span style='font-family:Nunito;font-weight:900;font-size:24px;color:var(--fg)'>{pad}<small style='font-size:14px;color:var(--muted)'>/{ptarg} seans</small></span>"
-            f"<span class='muted' style='font-size:12.5px'>· bu hafta{extra_note}</span></div>"
-            f"<div class='muted' style='font-size:12px;margin-top:4px'>Padel günlerin esnektir; Google Takvim'deki maçların otomatik işlenir veya tek tıkla kaydedebilirsin.</div>"
+            f"<span style='font-family:Nunito;font-weight:900;font-size:20px;color:var(--fg)'>{pad}<small style='font-size:12.5px;color:var(--muted)'>/{ptarg} seans</small></span>"
+            f"<span class='muted' style='font-size:11.5px'>· bu hafta{extra_note}</span></div>"
+            f"<div class='muted' style='font-size:11.5px;margin-top:4px'>Padel günlerin esnektir; Google Takvim'deki maçların otomatik işlenir veya tek tıkla kaydedebilirsin.</div>"
             f"{cal_extra}</div>",
             unsafe_allow_html=True,
         )
@@ -801,17 +801,17 @@ def page_home():
             st.markdown(
                 "<div class='fcard' style='margin-bottom:10px'><div class='eyebrow'>Aktivite · son gün</div>"
                 "<div style='display:grid;grid-template-columns:repeat(2,1fr);gap:12px;text-align:center'>"
-                f"<div><div style='font-family:Nunito;font-weight:900;font-size:21px;color:var(--fg)'>{int(act['steps'])}</div><div class='muted' style='font-size:11px'>adım</div></div>"
-                f"<div><div style='font-family:Nunito;font-weight:900;font-size:21px;color:var(--fg)'>{int(act['active_kcal'])}</div><div class='muted' style='font-size:11px'>aktif kcal</div></div>"
-                f"<div><div style='font-family:Nunito;font-weight:900;font-size:21px;color:var(--fg)'>{int(act['exercise_min'])}</div><div class='muted' style='font-size:11px'>egz. dk</div></div>"
-                f"<div><div style='font-family:Nunito;font-weight:900;font-size:21px;color:var(--fg)'>{act['distance_km']:.1f}</div><div class='muted' style='font-size:11px'>km</div></div>"
+                f"<div><div style='font-family:Nunito;font-weight:900;font-size:18px;color:var(--fg)'>{int(act['steps'])}</div><div class='muted' style='font-size:10.5px'>adım</div></div>"
+                f"<div><div style='font-family:Nunito;font-weight:900;font-size:18px;color:var(--fg)'>{int(act['active_kcal'])}</div><div class='muted' style='font-size:10.5px'>aktif kcal</div></div>"
+                f"<div><div style='font-family:Nunito;font-weight:900;font-size:18px;color:var(--fg)'>{int(act['exercise_min'])}</div><div class='muted' style='font-size:10.5px'>egz. dk</div></div>"
+                f"<div><div style='font-family:Nunito;font-weight:900;font-size:18px;color:var(--fg)'>{act['distance_km']:.1f}</div><div class='muted' style='font-size:10.5px'>km</div></div>"
                 "</div></div>",
                 unsafe_allow_html=True,
             )
         else:
             st.markdown(
                 "<div class='fcard' style='border-style:dashed'><div class='eyebrow'>Aktivite</div>"
-                "<div class='muted' style='font-size:13px;line-height:1.6'>Cronometer verini (exercises · dailysummary · biometrics) "
+                "<div class='muted' style='font-size:12px;line-height:1.5'>Cronometer verini (exercises · dailysummary · biometrics) "
                 "<b style='color:var(--fg)'>Beslenme</b> sekmesinden yükle; adım, aktif kcal, egzersiz dakikası ve mesafe burada görünür.</div></div>",
                 unsafe_allow_html=True,
             )
@@ -853,10 +853,10 @@ def _plan_step_box(i: int, e: dict, day_color: str, is_done: bool = False) -> st
     return (
         f"<div class='exrow' style='align-items:flex-start;min-height:90px;{border_style}'>"
         f"<div style='width:34px;height:34px;border-radius:50%;background:{badge_bg};color:{badge_fg};border:1.5px solid {badge_border};"
-        f"font-family:Nunito;font-weight:900;font-size:14px;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:2px'>{badge_content}</div>"
-        f"<div style='flex:1;min-width:0'><div style='font-weight:800;font-size:14.5px;color:var(--fg)'>{title_txt}</div>"
+        f"font-family:Nunito;font-weight:900;font-size:13px;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:2px'>{badge_content}</div>"
+        f"<div style='flex:1;min-width:0'><div style='font-weight:800;font-size:13.5px;color:var(--fg)'>{title_txt}</div>"
         f"<div class='chiprow' style='margin-top:4px'>{chips}</div>{sub_tip}</div>"
-        f"<div style='font-family:Nunito;font-weight:800;color:{badge_col};font-size:15px;flex-shrink:0'>{right_lbl}</div></div>"
+        f"<div style='font-family:Nunito;font-weight:800;color:{badge_col};font-size:13.5px;flex-shrink:0'>{right_lbl}</div></div>"
     )
 
 
@@ -866,12 +866,12 @@ def _cardio_box(c):
     role = f"<span class='chip' style='font-size:10px;padding:2px 7px;color:var(--green)'>{c['role']}</span>" if c.get("role") else ""
     return (
         f"<div class='exrow' style='align-items:flex-start'>"
-        f"<div style='width:38px;height:38px;border-radius:50%;background:color-mix(in srgb,var(--green) 18%,var(--surface-2));"
-        f"display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:19px'>{icon}</div>"
+        f"<div style='width:36px;height:36px;border-radius:50%;background:color-mix(in srgb,var(--green) 18%,var(--surface-2));"
+        f"display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:16px'>{icon}</div>"
         f"<div style='flex:1;min-width:0'>"
-        f"<div style='display:flex;align-items:baseline;gap:8px;flex-wrap:wrap'><div style='font-weight:800;font-size:14.5px;color:var(--fg)'>{c['name']}</div>"
-        f"<div style='font-family:Nunito;font-weight:800;color:var(--green);font-size:14px'>{c['minutes']} dk</div>{role}</div>"
-        f"<div class='muted' style='font-size:12px;margin-top:4px;line-height:1.5'>{c.get('tip','')}</div></div></div>"
+        f"<div style='display:flex;align-items:baseline;gap:8px;flex-wrap:wrap'><div style='font-weight:800;font-size:13.5px;color:var(--fg)'>{c['name']}</div>"
+        f"<div style='font-family:Nunito;font-weight:800;color:var(--green);font-size:13px'>{c['minutes']} dk</div>{role}</div>"
+        f"<div class='muted' style='font-size:11.5px;margin-top:4px;line-height:1.4'>{c.get('tip','')}</div></div></div>"
     )
 
 
@@ -886,7 +886,7 @@ def page_plan():
     status, lines = program_adjustment()
     tint = {"good": "var(--green)", "warn": "var(--orange)", "bad": "var(--red)", "": "var(--blue)"}[status]
     wk_txt = f"Hafta {pp['week']}/{P.PROGRAM_WEEKS}" if pp["started"] else "Hazırlık"
-    body = "".join(f"<div style='font-size:13.5px;line-height:1.6;margin-top:5px;color:var(--fg)'>{l}</div>" for l in lines)
+    body = "".join(f"<div style='font-size:12.5px;line-height:1.55;margin-top:5px;color:var(--fg)'>{l}</div>" for l in lines)
     st.markdown(
         f"<div class='fcard' style='border-color:color-mix(in srgb,{tint} 38%,var(--line))'>"
         f"<div style='display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap'>"
@@ -1047,14 +1047,14 @@ def _workout_step_card(
             f"<div class='wo-step-box'></div>{done_marker}"
             f"<div style='display:flex;align-items:flex-start;gap:12px;min-height:92px;margin-bottom:6px'>"
             f"<div style='width:34px;height:34px;border-radius:50%;background:{badge_bg};color:{badge_fg};"
-            f"border:1.5px solid {badge_border};font-family:Nunito;font-weight:900;font-size:14px;"
+            f"border:1.5px solid {badge_border};font-family:Nunito;font-weight:900;font-size:13px;"
             f"display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:2px'>{badge_content}</div>"
             f"<div style='flex:1;min-width:0;display:flex;flex-direction:column;justify-content:space-between;min-height:86px'>"
             f"<div>"
             f"<div style='display:flex;justify-content:space-between;align-items:flex-start;gap:6px'>"
-            f"<div style='font-weight:800;font-size:14.5px;color:var(--fg);line-height:1.25;min-height:36px;display:flex;align-items:flex-start'>{title_txt}</div>"
+            f"<div style='font-weight:800;font-size:13.5px;color:var(--fg);line-height:1.25;min-height:36px;display:flex;align-items:flex-start'>{title_txt}</div>"
             f"<div style='text-align:right;flex-shrink:0'>"
-            f"<div style='font-family:Nunito;font-weight:800;color:{badge_col};font-size:14.5px'>{right_lbl}</div>"
+            f"<div style='font-family:Nunito;font-weight:800;color:{badge_col};font-size:13.5px'>{right_lbl}</div>"
             f"<div style='margin-top:2px'>{dots}</div>"
             f"</div>"
             f"</div>"
@@ -1470,7 +1470,7 @@ def page_stats():
     st.markdown("<div class='eyebrow' style='margin-top:14px'>Akıllı özet" + ("  ·  Gemini" if used_ai else "") + "</div>", unsafe_allow_html=True)
     st.markdown(
         f"<div class='fcard' style='border-color:color-mix(in srgb,var(--blue) 32%,var(--line))'>"
-        f"<div style='font-size:14px;line-height:1.6;color:var(--fg)'>💬 {note}</div></div>",
+        f"<div style='font-size:12.5px;line-height:1.55;color:var(--fg)'>💬 {note}</div></div>",
         unsafe_allow_html=True,
     )
 
@@ -1519,7 +1519,7 @@ def page_stats():
                 st.markdown(
                     f"<div style='display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid var(--line)'>"
                     f"<span style='font-family:Nunito;font-weight:800;font-size:13px;width:52px;color:var(--muted)'>{d.day} {MON[d.month-1]}</span>"
-                    f"<span style='flex:1;font-weight:700;font-size:13.5px;color:var(--fg)'>{r['type']}</span>"
+                    f"<span style='flex:1;font-weight:700;font-size:12.5px;color:var(--fg)'>{r['type']}</span>"
                     f"<span class='muted' style='font-size:12.5px'>{int(r['minutes'])} dk · {int(r['kcal'])} kcal</span></div>",
                     unsafe_allow_html=True,
                 )
@@ -1607,8 +1607,8 @@ def page_nutrition():
         st.markdown(
             "<div class='fcard'><div style='display:flex;align-items:center;gap:18px'>"
             + ui.ring_svg(pct, "var(--green)", size=84)
-            + f"<div><div style='font-family:Nunito;font-weight:900;font-size:28px;color:var(--fg)'>{int(kc['consumed'])} <small style='color:var(--muted);font-size:15px'>/ {int(kc['target'])}</small></div>"
-            f"<div class='muted' style='font-size:13px'>kcal · {int(kc['remaining'])} kaldı</div></div></div></div>",
+            + f"<div><div style='font-family:Nunito;font-weight:900;font-size:22px;color:var(--fg)'>{int(kc['consumed'])} <small style='color:var(--muted);font-size:13px'>/ {int(kc['target'])}</small></div>"
+            f"<div class='muted' style='font-size:12px'>kcal · {int(kc['remaining'])} kaldı</div></div></div></div>",
             unsafe_allow_html=True,
         )
         fib_val = round(float(nt.get("fiber") or 0))
@@ -1724,7 +1724,7 @@ def page_nutrition():
                                                 help="Padel sıklığınıza göre esnek değiştirebilirsiniz (Varsayılan: 2 seans/hafta)."))
 
         cur_start_date = dt.date.fromisoformat(b.get("start_date") or "2026-10-25")
-        st.markdown("<div style='margin-top:10px;font-weight:700;font-size:13.5px;color:var(--fg)'>Resmi Program Başlangıç Tarihi</div>", unsafe_allow_html=True)
+        st.markdown("<div style='margin-top:10px;font-weight:700;font-size:12.5px;color:var(--fg)'>Resmi Program Başlangıç Tarihi</div>", unsafe_allow_html=True)
         col_sd, col_btn25, col_btn26 = st.columns([2, 1, 1], gap="small")
         with col_sd:
             new_sd = st.date_input("Başlangıç tarihi", value=cur_start_date, min_value=dt.date(2026, 10, 1),
@@ -1745,7 +1745,7 @@ def page_nutrition():
         st.caption("Kilo değiştikçe hedefler otomatik güncellenir ve yerel SQLite veritabanında saklanır.")
 
         st.markdown("<hr style='margin:14px 0 10px;border-color:var(--line)'>", unsafe_allow_html=True)
-        st.markdown("<div style='font-weight:800;font-size:13.5px;color:var(--fg)'>📅 Google Takvim Entegrasyonu</div>", unsafe_allow_html=True)
+        st.markdown("<div style='font-weight:800;font-size:12.5px;color:var(--fg)'>📅 Google Takvim Entegrasyonu</div>", unsafe_allow_html=True)
         try:
             sec_url = st.secrets.get("GOOGLE_CALENDAR_ICAL_URL") or st.secrets.get("GCAL_ICAL_URL")
         except Exception:
@@ -1786,10 +1786,10 @@ def page_nutrition():
     )
     st.markdown(
         f"<div class='fcard' style='margin-top:8px'><div class='eyebrow'>Senin için hesaplanan hedef</div>"
-        f"<div style='font-size:14px;line-height:1.7;color:var(--fg)'><b>{t['kcal']} kcal/gün</b> ({src})"
+        f"<div style='font-size:12.5px;line-height:1.6;color:var(--fg)'><b>{t['kcal']} kcal/gün</b> ({src})"
         f"&nbsp;·&nbsp;{prot_desc}"
         f"&nbsp;·&nbsp;{t['carbs']} g karb · {t['fat']} g yağ · {FIBER_TARGET} g lif</div>"
-        f"<div style='margin-top:8px;font-size:13.5px;color:var(--fg)'>📉 Tahmini kayıp: <b class='good'>~{wl:.2f} kg/hafta</b> "
+        f"<div style='margin-top:8px;font-size:12px;color:var(--fg)'>📉 Tahmini kayıp: <b class='good'>~{wl:.2f} kg/hafta</b> "
         f"(<span class='muted'>%{wlpct:.2f}/hafta · günde ~{S.get('deficit_now',0)} kcal açık</span>)</div></div>",
         unsafe_allow_html=True,
     )
