@@ -424,15 +424,15 @@ def build_heatmap_records() -> dict[str, dict]:
     cx = cron_ex_df()
     cx_by_date: dict[str, list[str]] = {}
     if not cx.empty:
-        for d, grp in cx.groupby("date"):
-            cx_by_date[str(d)] = [f"{r['type']} ({int(r['minutes'])} dk)" for _, r in grp.iterrows()]
+        for r in cx.itertuples(index=False):
+            cx_by_date.setdefault(str(r.date), []).append(f"{r.type} ({int(r.minutes)} dk)")
 
     # Index nutrition by date
     ndf = S.get("nutrition")
     nut_by_date: dict[str, dict] = {}
     if isinstance(ndf, pd.DataFrame) and not ndf.empty:
-        for _, r in ndf.iterrows():
-            nut_by_date[str(r["date"])] = {"kcal": int(r.get("kcal", 0)), "protein": int(r.get("protein", 0))}
+        for r in ndf.itertuples(index=False):
+            nut_by_date[str(r.date)] = {"kcal": int(getattr(r, "kcal", 0)), "protein": int(getattr(r, "protein", 0))}
 
     # Collect all known dates
     all_dates = (
@@ -625,8 +625,7 @@ def _counter_card():
 
 def page_home():
     st.markdown(
-        f"<h1 style='margin:0 0 2px;font-size:28px'>{GREET}, Anıl</h1>"
-        f"<div class='muted' style='font-size:13.5px;margin-bottom:14px'>{DOW_LONG[TODAY.weekday()]} · {TODAY.day} {MON[TODAY.month-1]}</div>",
+        ui.page_header(f"{GREET}, Anıl", f"{DOW_LONG[TODAY.weekday()]} · {TODAY.day} {MON[TODAY.month-1]}"),
         unsafe_allow_html=True,
     )
     st.markdown(_counter_card(), unsafe_allow_html=True)
@@ -719,7 +718,7 @@ def page_home():
             unsafe_allow_html=True,
         )
         if ws["days_until"] == 0 and not ws["logged_today"]:
-            if st.button(f"💉 Bugünkü dozu vurdum ({ws['dose_mg']:g} mg · {ws['next_site']})", use_container_width=True):
+            if st.button(f"💉 Bugünkü dozu vurdum ({ws['dose_mg']:g} mg · {ws['next_site']})", key="inj_btn", use_container_width=True):
                 iso = TODAY.strftime("%Y-%m-%d")
                 logs = [x for x in S["wegovy"].get("logs", []) if x.get("date") != iso]
                 logs.append({"date": iso, "dose": ws["dose_mg"], "site": ws["next_site"]})
@@ -855,8 +854,7 @@ def _cardio_box(c):
 def page_plan():
     end = WEEK_START + dt.timedelta(days=6)
     st.markdown(
-        f"<h1 style='margin:0'>Plan</h1><div class='muted' style='font-size:13px;margin-bottom:12px'>"
-        f"{WEEK_START.day} {MON[WEEK_START.month-1]}–{end.day} {MON[end.month-1]} · {P.SESSIONS_PER_WEEK} antrenman</div>",
+        ui.page_header("Plan", f"{WEEK_START.day} {MON[WEEK_START.month-1]}–{end.day} {MON[end.month-1]} · {P.SESSIONS_PER_WEEK} antrenman"),
         unsafe_allow_html=True,
     )
     phase, extra = current_phase()
@@ -1086,7 +1084,6 @@ def _workout_step_card(
 
 
 def page_workout():
-    st.markdown("<h1 style='margin:0 0 10px'>Antrenman</h1>", unsafe_allow_html=True)
     training = P.TRAINING_DAYS
     names = [d["name"] for d in training]
     today = P.day_for(TODAY.weekday())
@@ -1094,6 +1091,11 @@ def page_workout():
     done_iso = TODAY.strftime("%Y-%m-%d")
     pad_today = done_iso in padel_dates_all()
     cal_today = calendar_sync.padel_event_for_date(done_iso, calendar_padel_events())
+
+    st.markdown(
+        ui.page_header("Antrenman", f"{DOW_LONG[TODAY.weekday()]} · {TODAY.day} {MON[TODAY.month-1]} · 1..N Adım Akışı"),
+        unsafe_allow_html=True,
+    )
 
     if cal_today:
         t_str = f" (Saat {cal_today['start_time']})" if cal_today.get("start_time") else ""
@@ -1335,7 +1337,10 @@ def _render_period_plan_view(period: str):
 
 
 def page_stats():
-    st.markdown("<h1 style='margin:0 0 10px'>İstatistik & Hedef Takibi</h1>", unsafe_allow_html=True)
+    st.markdown(
+        ui.page_header("İstatistik & Hedef Takibi", "Yıllık aktivite haritası, hedefler ve kilo trendi"),
+        unsafe_allow_html=True,
+    )
 
     # ---- GitHub-style full-year activity & target heatmap ----
     hm_records = build_heatmap_records()
@@ -1520,39 +1525,44 @@ def page_stats():
 
 
 def page_nutrition():
-    st.markdown("<h1 style='margin:0 0 10px'>Beslenme & Wegovy</h1>", unsafe_allow_html=True)
-    ups = st.file_uploader("Cronometer CSV yükle (dailysummary · biometrics · exercises)",
-                           type="csv", accept_multiple_files=True)
-    if ups:
-        msgs = []
-        for f in ups:
-            raw = f.getvalue()
-            head = raw[:600].decode("utf-8-sig", "replace")
-            kind = cronometer.detect(head)
-            try:
-                if kind == "nutrition":
-                    S["nutrition"] = nutrition.parse_cronometer(raw)
-                    msgs.append(f"beslenme {len(S['nutrition'])} gün")
-                elif kind == "biometrics":
-                    bw = cronometer.parse_biometrics(raw)
-                    rows = {x["date"]: x["w"] for x in S["weights"]}
-                    for x in bw:
-                        rows[x["date"]] = x["w"]
-                    S["weights"] = [{"date": k, "w": v} for k, v in rows.items()]
-                    msgs.append(f"kilo {len(bw)} ölçüm")
-                elif kind == "exercises":
-                    ex = cronometer.parse_exercises(raw)
-                    S["cron_ex"] = ex.to_dict("records")
-                    S["active_kcal"] = {r["date"]: r["kcal"] for r in cronometer.parse_active_energy(raw)}
-                    npad = int(ex["padel"].sum()) if not ex.empty and "padel" in ex else 0
-                    msgs.append(f"spor {len(ex)} seans ({npad} padel)")
-                else:
-                    msgs.append(f"{f.name}: tanınmadı")
-            except Exception:  # noqa: BLE001
-                msgs.append(f"{f.name}: okunamadı")
-        compute_targets()
-        _save()
-        st.success("Yüklendi ve kalıcı veritabanına kaydedildi → " + " · ".join(msgs))
+    st.markdown(
+        ui.page_header("Beslenme & Wegovy", "Makro takibi, kalori açığı ve GLP-1 (Wegovy) protokolü"),
+        unsafe_allow_html=True,
+    )
+    with st.container(border=True):
+        st.markdown("<div class='eyebrow' style='margin:0 0 6px'>📄 Cronometer CSV Yükle</div>", unsafe_allow_html=True)
+        ups = st.file_uploader("Cronometer CSV yükle (dailysummary · biometrics · exercises)",
+                               type="csv", accept_multiple_files=True, label_visibility="collapsed")
+        if ups:
+            msgs = []
+            for f in ups:
+                raw = f.getvalue()
+                head = raw[:600].decode("utf-8-sig", "replace")
+                kind = cronometer.detect(head)
+                try:
+                    if kind == "nutrition":
+                        S["nutrition"] = nutrition.parse_cronometer(raw)
+                        msgs.append(f"beslenme {len(S['nutrition'])} gün")
+                    elif kind == "biometrics":
+                        bw = cronometer.parse_biometrics(raw)
+                        rows = {x["date"]: x["w"] for x in S["weights"]}
+                        for x in bw:
+                            rows[x["date"]] = x["w"]
+                        S["weights"] = [{"date": k, "w": v} for k, v in rows.items()]
+                        msgs.append(f"kilo {len(bw)} ölçüm")
+                    elif kind == "exercises":
+                        ex = cronometer.parse_exercises(raw)
+                        S["cron_ex"] = ex.to_dict("records")
+                        S["active_kcal"] = {r["date"]: r["kcal"] for r in cronometer.parse_active_energy(raw)}
+                        npad = int(ex["padel"].sum()) if not ex.empty and "padel" in ex else 0
+                        msgs.append(f"spor {len(ex)} seans ({npad} padel)")
+                    else:
+                        msgs.append(f"{f.name}: tanınmadı")
+                except Exception:  # noqa: BLE001
+                    msgs.append(f"{f.name}: okunamadı")
+            compute_targets()
+            _save()
+            st.success("Yüklendi ve kalıcı veritabanına kaydedildi → " + " · ".join(msgs))
 
     nt = nutrition_today()
     t = S["targets"]
@@ -1590,16 +1600,17 @@ def page_nutrition():
     else:
         st.info("Cronometer'dan **dailysummary.csv** yükle; kalori, protein, lif ve makroları burada özetlerim. Protein, Wegovy'de kas koruma için öncelikli.")
 
-    st.markdown("<div class='eyebrow' style='margin-top:6px'>Kilo kaydet</div>", unsafe_allow_html=True)
-    c1, c2 = st.columns([2, 1])
-    nw = c1.number_input("kg", min_value=40.0, max_value=250.0, value=float(latest_weight()[0] or 100.0), step=0.1, label_visibility="collapsed")
-    if c2.button("Kaydet", use_container_width=True):
-        iso = TODAY.strftime("%Y-%m-%d")
-        S["weights"] = [x for x in S["weights"] if x["date"] != iso] + [{"date": iso, "w": round(nw, 1)}]
-        compute_targets()
-        _save()
-        st.success("Kalıcı olarak kaydedildi ✓")
-        st.rerun()
+    with st.container(border=True):
+        st.markdown("<div class='eyebrow' style='margin:0 0 8px'>⚖️ Manuel Kilo Kaydet</div>", unsafe_allow_html=True)
+        c1, c2 = st.columns([2.5, 1], gap="small")
+        nw = c1.number_input("kg", min_value=40.0, max_value=250.0, value=float(latest_weight()[0] or 100.0), step=0.1, label_visibility="collapsed")
+        if c2.button("Kaydet", use_container_width=True, key="nut_weight_save"):
+            iso = TODAY.strftime("%Y-%m-%d")
+            S["weights"] = [x for x in S["weights"] if x["date"] != iso] + [{"date": iso, "w": round(nw, 1)}]
+            compute_targets()
+            _save()
+            st.success("Kalıcı olarak kaydedildi ✓")
+            st.rerun()
 
     ws = wegovy_status()
     with st.expander(f"💉 Wegovy doz & enjeksiyon takibi ({ws['dose_mg']:g} mg · her {ws['inj_day_name']})", expanded=ws["days_until"] == 0):

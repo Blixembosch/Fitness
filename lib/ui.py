@@ -544,6 +544,17 @@ def ring_svg(pct: float, color: str, size: int = 54) -> str:
     )
 
 
+def page_header(title: str, subtitle: str = "", badge: str = "") -> str:
+    """Standardized page header used uniformly across all 5 dashboard tabs."""
+    badge_html = f'<span class="chip" style="font-size:11.5px;color:var(--teal);margin-inline-start:10px">{badge}</span>' if badge else ""
+    sub_html = f'<div class="muted" style="font-size:13.5px;margin-top:2px">{subtitle}</div>' if subtitle else ""
+    return (
+        f'<div style="margin-bottom:14px">'
+        f'<div style="display:flex;align-items:center"><h1 style="margin:0 0 2px;font-size:28px">{title}</h1>{badge_html}</div>'
+        f'{sub_html}</div>'
+    )
+
+
 def ring(pct: float, color: str, value_html: str, label: str, size: int = 54) -> str:
     return (f'<div class="ringcard">{ring_svg(pct, color, size)}'
             f'<div class="v">{value_html}</div><div class="k">{label}</div></div>')

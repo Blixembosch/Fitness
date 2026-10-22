@@ -46,13 +46,14 @@ def parse_weights(df: pd.DataFrame) -> list[dict]:
     wcol = _col(df, "weight_kg", "weight", "kg", "kilo", "ağırlık")
     if not dcol or not wcol:
         return []
-    out = []
-    for _, row in df.iterrows():
-        d = _to_date(row[dcol])
-        w = pd.to_numeric(row[wcol], errors="coerce")
-        if pd.notna(d) and pd.notna(w) and 30 < float(w) < 300:
-            out.append({"date": d.strftime("%Y-%m-%d"), "w": round(float(w), 1)})
-    return out
+    d_series = df[dcol].apply(_to_date)
+    w_series = pd.to_numeric(df[wcol], errors="coerce")
+    valid = d_series.notna() & w_series.notna() & (w_series > 30) & (w_series < 300)
+    if not valid.any():
+        return []
+    sub_d = d_series[valid].dt.strftime("%Y-%m-%d")
+    sub_w = w_series[valid].round(1)
+    return [{"date": str(d), "w": float(w)} for d, w in zip(sub_d, sub_w)]
 
 
 # workout types we count as padel (Apple Health often logs it as Tennis)
@@ -102,15 +103,24 @@ def parse_daily(df: pd.DataFrame) -> dict:
     ecol = _col(df, "exercise_min", "exercise minutes", "exercise_minutes", "egzersiz_dk")
     scol = _col(df, "steps", "adim", "adım")
     kcol = _col(df, "distance_km", "distance", "mesafe", "distance_walkrun")
+
+    d_series = df[dcol].apply(_to_date)
+    valid = d_series.notna()
+    if not valid.any():
+        return {}
+    sub_df = df[valid]
+    sub_d = d_series[valid].dt.strftime("%Y-%m-%d")
+    a_vals = pd.to_numeric(sub_df[acol], errors="coerce").fillna(0.0).round(1) if acol else pd.Series(0.0, index=sub_df.index)
+    e_vals = pd.to_numeric(sub_df[ecol], errors="coerce").fillna(0.0).round(1) if ecol else pd.Series(0.0, index=sub_df.index)
+    s_vals = pd.to_numeric(sub_df[scol], errors="coerce").fillna(0.0).round(1) if scol else pd.Series(0.0, index=sub_df.index)
+    k_vals = pd.to_numeric(sub_df[kcol], errors="coerce").fillna(0.0).round(1) if kcol else pd.Series(0.0, index=sub_df.index)
+
     out = {}
-    for _, row in df.iterrows():
-        d = _to_date(row[dcol])
-        if pd.isna(d):
-            continue
-        out[d.strftime("%Y-%m-%d")] = {
-            "active_kcal": _num(row, acol),
-            "exercise_min": _num(row, ecol),
-            "steps": _num(row, scol),
-            "distance_km": _num(row, kcol),
+    for d, a, e, s, k in zip(sub_d, a_vals, e_vals, s_vals, k_vals):
+        out[str(d)] = {
+            "active_kcal": float(a),
+            "exercise_min": float(e),
+            "steps": float(s),
+            "distance_km": float(k),
         }
     return out
