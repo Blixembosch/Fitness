@@ -1,0 +1,14 @@
+PRAGMA foreign_keys=OFF;
+BEGIN TRANSACTION;
+CREATE TABLE kv (  key TEXT PRIMARY KEY,  value TEXT NOT NULL,  updated_at TEXT NOT NULL);
+INSERT INTO kv VALUES('body','{"birth": "1992-03-12", "height": 178, "sex": "male", "activity": "light", "deficit": 500, "kcal_goal": 2000, "protein_mode": "adjusted", "theme": "dark"}','2026-10-22T04:58:12.805686+00:00');
+INSERT INTO kv VALUES('wegovy','{"dose_mg": 0.25, "inj_weekday": 5, "logs": []}','2026-10-22T04:58:12.805686+00:00');
+INSERT INTO kv VALUES('weights','[{"date": "2026-10-12", "w": 101.1}, {"date": "2026-10-16", "w": 101.1}, {"date": "2026-10-19", "w": 100.5}]','2026-10-22T04:58:12.805686+00:00');
+INSERT INTO kv VALUES('workouts','[]','2026-10-22T04:58:12.805686+00:00');
+INSERT INTO kv VALUES('padel','[]','2026-10-22T04:58:12.805686+00:00');
+INSERT INTO kv VALUES('cron_ex','[]','2026-10-22T04:58:12.805686+00:00');
+INSERT INTO kv VALUES('active_kcal','{}','2026-10-22T04:58:12.805686+00:00');
+INSERT INTO kv VALUES('setlog','{}','2026-10-22T04:58:12.805686+00:00');
+INSERT INTO kv VALUES('loadlog','{}','2026-10-22T04:58:12.805686+00:00');
+INSERT INTO kv VALUES('nutrition_rows','[]','2026-10-22T04:58:12.805686+00:00');
+COMMIT;
