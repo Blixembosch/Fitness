@@ -604,6 +604,7 @@ def github_heatmap(
     today: dt.date,
     day_records: dict[str, dict],
     weeks: int = 52,
+    start_date: dt.date | None = None,
 ) -> str:
     """Render a GitHub-style contribution heatmap over `weeks` ending on the current week."""
     this_monday = today - dt.timedelta(days=today.weekday())
@@ -641,11 +642,12 @@ def github_heatmap(
             rec = day_records.get(iso, {})
             lvl = int(rec.get("level", 0))
             is_future = cur > today
-            if not is_future and lvl > 0:
+            is_pre = (start_date is not None) and (cur < start_date)
+            if not is_future and not is_pre and lvl > 0:
                 active_days += 1
                 if iso.startswith(month_iso_prefix):
                     this_month_active += 1
-            if not is_future:
+            if not is_future and not is_pre:
                 if rec.get("strength"):
                     str_cnt += 1
                 if rec.get("padel"):
@@ -655,14 +657,19 @@ def github_heatmap(
                 if rec.get("protein_ok"):
                     prot_cnt += 1
 
-            cls = f"gh-cell l{lvl}" if (lvl > 0 and not is_future) else "gh-cell"
+            cls = f"gh-cell l{lvl}" if (lvl > 0 and not is_future and not is_pre) else "gh-cell"
             if cur == today:
                 cls += " today"
             elif is_future:
                 cls += " future"
 
             date_lbl = f"{cur.day} {MON_TR[cur.month - 1]} {cur.year} ({DOW_TR[d_idx]})"
-            detail = rec.get("summary") or ("Gelecek gün" if is_future else "Kayıt yok")
+            if is_pre:
+                detail = f"Resmi başlangıç öncesi ({start_date.day} {MON_TR[start_date.month - 1]} baz)"
+            elif is_future:
+                detail = "Gelecek gün"
+            else:
+                detail = rec.get("summary") or "Kayıt yok"
             tip = f"{date_lbl} — {detail}".replace('"', "&quot;")
             cells.append(f'<div class="{cls}" title="{tip}"></div>')
 

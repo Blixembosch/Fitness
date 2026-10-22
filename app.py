@@ -19,7 +19,8 @@ S.setdefault("page", "home")
 # Body stats drive the targets. `protein_mode="adjusted"` uses adjusted bodyweight (BMI > 25) so
 # the daily protein target sits in a sustainable 150–180 g muscle-preservation band on Wegovy.
 S.setdefault("body", {"birth": "1992-03-12", "height": 178, "sex": "male", "activity": "light",
-                      "deficit": 500, "kcal_goal": 2000, "protein_mode": "adjusted", "theme": "dark"})
+                      "deficit": 500, "kcal_goal": 2000, "protein_mode": "adjusted", "theme": "dark",
+                      "start_date": "2026-10-25"})
 WEGOVY_DOSES = [0.25, 0.5, 1.0, 1.7, 2.4]
 WEGOVY_SITES = ["Sol karın", "Sağ karın", "Sol üst bacak", "Sağ üst bacak", "Sol üst kol", "Sağ üst kol"]
 S.setdefault("wegovy", {"dose_mg": 0.25, "inj_weekday": 5, "logs": []})  # default Saturday (5)
@@ -49,7 +50,11 @@ store.hydrate_session(S)
 S["body"].setdefault("theme", "dark")
 ui.inject(S["body"].get("theme", "dark"))
 
-START_DATE = dt.date(2026, 10, 31)    # baseline: progress (weight, streak) is measured from here
+_start_str = S.get("body", {}).get("start_date") or "2026-10-25"
+try:
+    START_DATE = dt.date.fromisoformat(str(_start_str))
+except Exception:
+    START_DATE = dt.date(2026, 10, 25)
 START_ISO = START_DATE.strftime("%Y-%m-%d")
 
 TODAY = dt.date.today()
@@ -191,12 +196,15 @@ def activity_daily():
 
 
 def today_activity():
-    """Today's activity (steps/active kcal/exercise min/distance), or the latest logged day."""
+    """Today's activity (steps/active kcal/exercise min/distance), or the latest logged day on/after START_ISO."""
     daily = activity_daily()
     if not daily:
         return None
     iso = TODAY.strftime("%Y-%m-%d")
-    return daily.get(iso) or daily[sorted(daily)[-1]]
+    if iso in daily:
+        return daily[iso]
+    valid = [d for d in sorted(daily) if d >= START_ISO]
+    return daily[valid[-1]] if valid else None
 
 
 def weights_df():
@@ -222,7 +230,10 @@ def nutrition_today():
         return None
     iso = TODAY.strftime("%Y-%m-%d")
     row = df[df["date"] == iso]
-    return (row.iloc[0] if not row.empty else df.iloc[-1]).to_dict()
+    if not row.empty:
+        return row.iloc[0].to_dict()
+    valid = df[df["date"] >= START_ISO]
+    return valid.iloc[-1].to_dict() if not valid.empty else None
 
 
 def workouts_week():
@@ -246,24 +257,23 @@ def padel_week():
 
 
 def baseline_weight():
-    """(kg, Timestamp) nearest the 2026-10-31 baseline: first weigh-in on/after it, else the first
+    """(kg, Timestamp) nearest the START_DATE baseline: first weigh-in on/after it, else the first
     recorded weigh-in before it so pre-baseline progress is also visible."""
     df = weights_df()
     if df.empty:
         return (None, None)
     after = df[df["date"] >= pd.Timestamp(START_DATE)]
-    row = after.iloc[0] if not after.empty else df.iloc[0]
+    row = after.iloc[0] if not after.empty else df.iloc[-1]
     return (round(float(row["w"]), 1), row["date"])
 
 
 def progress_since_start():
-    """(delta_kg, started). started becomes True once a weigh-in on/after the baseline exists;
-    before that we still compute the actual pre-start delta if >=2 weigh-ins exist."""
+    """(delta_kg, started). started becomes True once a weigh-in on/after the baseline exists."""
     df = weights_df()
     base, _ = baseline_weight()
     latest, ldate = latest_weight()
     started = base is not None and ldate is not None and ldate >= pd.Timestamp(START_DATE)
-    if base is not None and latest is not None and len(df) >= 2:
+    if started and base is not None and latest is not None and len(df) >= 2:
         delta = round(latest - base, 1)
     else:
         delta = 0.0
@@ -271,14 +281,17 @@ def progress_since_start():
 
 
 def cardio_summary(days: int):
-    """Cardio/padel/activity rollup over the last `days` of LOGGED sessions (anchored to the latest
-    logged date, since Cronometer imports are historical). None when there's nothing logged."""
+    """Cardio/padel/activity rollup over the last `days` of LOGGED sessions on/after START_ISO.
+    None when there's nothing logged on/after START_ISO."""
     cx = cron_ex_df()
     if cx.empty:
         return None
-    anchor = pd.to_datetime(cx["date"]).max()
+    cx_post = cx[cx["date"] >= START_ISO]
+    if cx_post.empty:
+        return None
+    anchor = pd.to_datetime(cx_post["date"]).max()
     start = (anchor - pd.Timedelta(days=days - 1)).strftime("%Y-%m-%d")
-    win = cx[cx["date"] >= start]
+    win = cx_post[cx_post["date"] >= start]
     if win.empty:
         return None
     by_type = (win.groupby("type")
@@ -292,7 +305,7 @@ def cardio_summary(days: int):
 
 
 def program_progress():
-    """Where we are in the 12-week block from the 2026-10-31 baseline.
+    """Where we are in the 12-week block from the START_DATE baseline.
     Before the baseline: {started:False, days_to_start:n}. After: week 1..12 + a 0..1 pct."""
     d = (TODAY - START_DATE).days
     if d < 0:
@@ -327,9 +340,10 @@ def cardio_dates_all():
 
 
 def week_counts(week_iso: str):
-    """(strength_sessions, padel_sessions) for the 7-day week starting week_iso."""
+    """(strength_sessions, padel_sessions) for the 7-day week starting week_iso, counting on/after START_ISO."""
     end = (dt.date.fromisoformat(week_iso) + dt.timedelta(days=6)).strftime("%Y-%m-%d")
-    win = lambda ds: sum(1 for d in ds if week_iso <= d <= end)
+    w_start = max(START_ISO, week_iso)
+    win = lambda ds: sum(1 for d in ds if w_start <= d <= end)
     return win(strength_dates_all()), win(padel_dates_all())
 
 
@@ -341,9 +355,10 @@ def program_week_grid(week_start: dt.date):
         d = week_start + dt.timedelta(days=i)
         iso = d.strftime("%Y-%m-%d")
         day = P.DAYS[i]
-        has_str = iso in strv
-        has_pad = iso in padv
-        has_crd = iso in crdv
+        is_pre_start = iso < START_ISO
+        has_str = (iso in strv) and not is_pre_start
+        has_pad = (iso in padv) and not is_pre_start
+        has_crd = (iso in crdv) and not is_pre_start
 
         is_plan_pad = "padel" in day["key"].lower()
         is_plan_lift = day["focus"] in ("upper", "lower", "full")
@@ -444,6 +459,8 @@ def build_heatmap_records() -> dict[str, dict]:
             all_dates.add(k.split("|")[0])
 
     for iso in all_dates:
+        if iso < START_ISO:
+            continue
         has_str = iso in str_dates
         has_pad = iso in pad_dates
         has_crd = iso in crd_dates
@@ -516,8 +533,9 @@ def program_adjustment():
     lines, status = [], "good"
     if not pp["started"]:
         status = ""
+        start_fmt = f"{START_DATE.day} {MON[START_DATE.month-1]}"
         lines.append(f"🗓 Başlangıca <b>{pp['days_to_start']} gün</b>. İlk blok <i>Temel · Adaptasyon</i>: "
-                     "hareketleri oturt, protein ve uykuyu baz al. 31 Ekim'de resmi 12 haftalık sayaç başlıyor.")
+                     f"hareketleri oturt, protein ve uykuyu baz al. {start_fmt}'de resmi 12 haftalık sayaç başlıyor.")
     if ws["in_48h"]:
         lines.append(
             f"💉 <b>Wegovy ({ws['dose_mg']:g} mg) 48s penceresi:</b> Enjeksiyon sonrası ilk 24–48 saatte iştah/enerji "
@@ -560,11 +578,15 @@ def age_from(birth: str) -> int:
 def compute_targets():
     """Targets derived from the latest bodyweight + body stats, so they track as weight changes."""
     w = latest_weight()[0] or 100.0
-    b = S["body"]
+    b = S.get("body", {})
     age = age_from(b["birth"]) if b.get("birth") else b.get("age", 35)
     pmode = b.get("protein_mode", "adjusted")
-    pband = nutrition.protein_band(w, b["height"], mode=pmode)
-    t = nutrition.estimate_targets(w, b["height"], age, b["sex"], b["activity"], b["deficit"],
+    height = int(b.get("height") or 178)
+    sex = b.get("sex", "male")
+    activity = b.get("activity", "light")
+    deficit = int(b.get("deficit") or 500)
+    pband = nutrition.protein_band(w, height, mode=pmode)
+    t = nutrition.estimate_targets(w, height, age, sex, activity, deficit,
                                    floor=1500, protein_per_kg=PROTEIN_PER_KG, kcal=b.get("kcal_goal"))
     prot_target = pband["target"]
     fat_target = t["fat"]
@@ -600,13 +622,14 @@ def _coach_note(payload_key: str, has_key: bool):
 # ---------------- pages ----------------
 def _counter_card():
     pp = program_progress()
+    start_fmt = f"{START_DATE.day} {MON[START_DATE.month-1]}"
     if not pp["started"]:
         n = pp["days_to_start"]
         return (
             "<div class='counter'>"
-            f"<div><div class='big'>{n}<small> gün</small></div><div class='lbl'>Başlangıca · 31 Ekim</div></div>"
+            f"<div><div class='big'>{n}<small> gün</small></div><div class='lbl'>Başlangıca · {start_fmt}</div></div>"
             "<div style='flex:1;min-width:140px'><div style='font-weight:800;font-size:16px;color:var(--fg)'>12 haftalık program · Hazırlık Fazı</div>"
-            "<div class='muted' style='font-size:13.5px;margin-top:4px'>Resmi 12 haftalık sayaç 31 Ekim'de başlıyor; bu süreçteki tüm antrenman ve tartımların kaydediliyor.</div></div>"
+            f"<div class='muted' style='font-size:13.5px;margin-top:4px'>Resmi 12 haftalık sayaç {start_fmt}'de başlıyor; bu süreçteki tüm antrenman ve tartımların kaydediliyor.</div></div>"
             "</div>"
         )
     grid = program_week_grid(WEEK_START)
@@ -684,12 +707,13 @@ def page_home():
         w, _ = latest_weight()
         if w is not None:
             delta, started = progress_since_start()
-            if delta != 0:
+            start_fmt = f"{START_DATE.day} {MON[START_DATE.month-1]}"
+            if delta != 0 and started:
                 dcls = "good" if delta < 0 else "bad"
-                lbl = "başlangıçtan" if started else "ilk kayıttan (baz: 31 Eki)"
+                lbl = "başlangıçtan"
                 note = f"<span class='{dcls}' style='margin-inline-start:auto;font-weight:700;font-size:13px'>{'↓' if delta<0 else '↑'} {abs(delta):.1f} kg {lbl}</span>"
             else:
-                note = "<span style='margin-inline-start:auto;color:var(--muted);font-weight:700;font-size:13px'>baz: 31 Eki</span>"
+                note = f"<span style='margin-inline-start:auto;color:var(--muted);font-weight:700;font-size:13px'>baz: {start_fmt}</span>"
             st.markdown(
                 f"<div class='fcard' style='margin-bottom:10px'><div class='eyebrow'>Vücut ağırlığı</div>"
                 f"<div style='display:flex;align-items:flex-end;gap:10px'>"
@@ -1269,12 +1293,13 @@ def _render_period_plan_view(period: str):
         start_mon_iso = start_mon.strftime("%Y-%m-%d")
         headers = "".join(f"<div style='text-align:center;font-size:11px;font-weight:800;color:var(--muted)'>{d}</div>" for d in DOW)
         cells = ""
-        str_all = strength_dates_all()
-        pad_all = padel_dates_all()
-        crd_all = cardio_dates_all()
-        tot_str = len([d for d in str_all if d >= start_mon_iso])
-        tot_pad = len([d for d in pad_all if d >= start_mon_iso])
-        tot_crd = len([d for d in crd_all if d >= start_mon_iso])
+        str_all = [d for d in strength_dates_all() if d >= START_ISO]
+        pad_all = [d for d in padel_dates_all() if d >= START_ISO]
+        crd_all = [d for d in cardio_dates_all() if d >= START_ISO]
+        effective_start = max(START_ISO, start_mon_iso)
+        tot_str = len([d for d in str_all if d >= effective_start])
+        tot_pad = len([d for d in pad_all if d >= effective_start])
+        tot_crd = len([d for d in crd_all if d >= effective_start])
         for w in range(4):
             w_mon = start_mon + dt.timedelta(weeks=w)
             for g in program_week_grid(w_mon):
@@ -1344,22 +1369,22 @@ def page_stats():
 
     # ---- GitHub-style full-year activity & target heatmap ----
     hm_records = build_heatmap_records()
-    st.markdown(ui.github_heatmap(TODAY, hm_records, weeks=52), unsafe_allow_html=True)
+    st.markdown(ui.github_heatmap(TODAY, hm_records, weeks=52, start_date=START_DATE), unsafe_allow_html=True)
 
     # ---- Modern Weekly, Monthly & 3-Month Target Overview ----
     period = st.segmented_control("Dönem görünümü", ["Hafta", "Ay", "3 Ay"], default="Hafta", key="sp") or "Hafta"
     days = 7 if period == "Hafta" else 30 if period == "Ay" else 90
-    start = (TODAY - dt.timedelta(days=days - 1)).strftime("%Y-%m-%d")
+    raw_start = (TODAY - dt.timedelta(days=days - 1)).strftime("%Y-%m-%d")
+    start = max(START_ISO, raw_start)
 
-    str_all = strength_dates_all()
-    pad_all = padel_dates_all()
+    str_all = [d for d in strength_dates_all() if d >= START_ISO]
+    pad_all = [d for d in padel_dates_all() if d >= START_ISO]
     wk_in_period = [d for d in str_all if d >= start]
     pad_in_period = [d for d in pad_all if d >= start]
 
     ndf = S["nutrition"]
     if ndf is not None and not ndf.empty:
-        win_ndf = ndf[ndf["date"] >= start]
-        recent = win_ndf if not win_ndf.empty else ndf.tail(days)
+        recent = ndf[ndf["date"] >= start]
     else:
         recent = pd.DataFrame()
     avg_prot = round(recent["protein"].mean()) if not recent.empty else 0
@@ -1374,12 +1399,16 @@ def page_stats():
     deficit = (S["tdee"] - avg_kcal) if avg_kcal else None
 
     # Compute weight delta specific to the selected period (7d / 30d / 90d)
+    start_fmt = f"{START_DATE.day} {MON[START_DATE.month-1]}"
     if len(wwin) >= 2:
         period_wdelta = round(float(wwin["w"].iloc[-1] - wwin["w"].iloc[0]), 1)
         w_sub = f"son {days} günde ({len(wwin)} tartım)"
+    elif len(wwin) == 1:
+        period_wdelta = 0.0
+        w_sub = f"1 tartım ({start_fmt} baz)"
     else:
-        period_wdelta, _ = progress_since_start()
-        w_sub = f"son {days} günde {len(wwin)} tartım · toplam değişim"
+        period_wdelta = 0.0
+        w_sub = f"Resmi başlangıç ({start_fmt}) bekleniyor"
 
     weeks_factor = 1 if period == "Hafta" else 4 if period == "Ay" else 12
     str_goal_period = STRENGTH_TARGET * weeks_factor
@@ -1449,17 +1478,21 @@ def page_stats():
     st.markdown(f"<div class='fcard' style='padding:4px 16px 14px'>{''.join(rows)}</div>", unsafe_allow_html=True)
 
     st.markdown("<div class='eyebrow' style='margin-top:16px'>Kilo trendi</div>", unsafe_allow_html=True)
-    if not wdf.empty:
+    chart_wdf = wdf[wdf["date"] >= pd.Timestamp(START_DATE)] if not wdf.empty else wdf
+    if not chart_wdf.empty:
         fig = go.Figure()
-        fig.add_trace(go.Scatter(x=wdf["date"], y=wdf["w"], mode="markers", marker=dict(size=7, color="#34d399"), name="Tartım"))
-        if len(wdf) >= 2:
-            ma = wdf["w"].rolling(7, min_periods=1).mean()
-            fig.add_trace(go.Scatter(x=wdf["date"], y=ma, mode="lines", line=dict(color="#34d399", width=3), name="7-gün ort."))
+        fig.add_trace(go.Scatter(x=chart_wdf["date"], y=chart_wdf["w"], mode="markers", marker=dict(size=7, color="#34d399"), name="Tartım"))
+        if len(chart_wdf) >= 2:
+            ma = chart_wdf["w"].rolling(7, min_periods=1).mean()
+            fig.add_trace(go.Scatter(x=chart_wdf["date"], y=ma, mode="lines", line=dict(color="#34d399", width=3), name="7-gün ort."))
         fig.update_layout(height=210, margin=dict(l=0, r=0, t=6, b=0), paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)", font=dict(color="#94a3b8"), showlegend=False)
         fig.update_xaxes(showgrid=False)
         fig.update_yaxes(gridcolor="rgba(148,163,184,.12)", ticksuffix=" kg")
         st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
         st.caption("Çizgi: 7 günlük hareketli ortalama (günlük dalgalanmayı yumuşatır).")
+    else:
+        start_fmt = f"{START_DATE.day} {MON[START_DATE.month-1]}"
+        st.info(f"⚖️ Resmi başlangıç ({start_fmt}) itibariyle tartım kayıtları burada grafiklenecek. Önceki test/geçmiş veriler temiz bir başlangıç için gizlendi.")
 
     cs = cardio_summary(days)
     if cs:
@@ -1587,16 +1620,18 @@ def page_nutrition():
             ui.bar("Lif (Wegovy sindirim desteği)", f"{fib_val} / {FIBER_TARGET} g", fib_pct, "var(--green)"),
         ])
         st.markdown(f"<div class='fcard'><div class='eyebrow'>Makrolar · bugün</div><div class='bars'>{bars}</div></div>", unsafe_allow_html=True)
-        last7 = S["nutrition"].tail(7)
-        if len(last7) > 1:
-            fig = go.Figure(go.Bar(x=last7["date"], y=last7["protein"], marker_color="#fb923c"))
-            fig.add_hline(y=pband["min"], line_dash="dot", line_color="#34d399", annotation_text=f"Alt sınır ({pband['min']}g)")
-            fig.add_hline(y=t["protein"], line_dash="dash", line_color="#94a3b8", annotation_text=f"Hedef ({t['protein']}g)")
-            fig.update_layout(height=180, margin=dict(l=0, r=0, t=6, b=0), paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)", font=dict(color="#94a3b8"))
-            fig.update_xaxes(showgrid=False)
-            fig.update_yaxes(gridcolor="rgba(148,163,184,.12)", ticksuffix=" g")
-            st.markdown("<div class='eyebrow'>Son günler · protein</div>", unsafe_allow_html=True)
-            st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
+        if S["nutrition"] is not None and not S["nutrition"].empty:
+            post_nut = S["nutrition"][S["nutrition"]["date"] >= START_ISO]
+            last7 = post_nut.tail(7)
+            if len(last7) > 1:
+                fig = go.Figure(go.Bar(x=last7["date"], y=last7["protein"], marker_color="#fb923c"))
+                fig.add_hline(y=pband["min"], line_dash="dot", line_color="#34d399", annotation_text=f"Alt sınır ({pband['min']}g)")
+                fig.add_hline(y=t["protein"], line_dash="dash", line_color="#94a3b8", annotation_text=f"Hedef ({t['protein']}g)")
+                fig.update_layout(height=180, margin=dict(l=0, r=0, t=6, b=0), paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)", font=dict(color="#94a3b8"))
+                fig.update_xaxes(showgrid=False)
+                fig.update_yaxes(gridcolor="rgba(148,163,184,.12)", ticksuffix=" g")
+                st.markdown("<div class='eyebrow'>Son günler · protein</div>", unsafe_allow_html=True)
+                st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
     else:
         st.info("Cronometer'dan **dailysummary.csv** yükle; kalori, protein, lif ve makroları burada özetlerim. Protein, Wegovy'de kas koruma için öncelikli.")
 
@@ -1687,6 +1722,22 @@ def page_nutrition():
         cur_ptarg = int(b.get("padel_target") or 2)
         b["padel_target"] = int(st.number_input("Haftalık Padel hedefi (seans/hafta)", 1, 7, cur_ptarg, step=1,
                                                 help="Padel sıklığınıza göre esnek değiştirebilirsiniz (Varsayılan: 2 seans/hafta)."))
+
+        cur_start_date = dt.date.fromisoformat(b.get("start_date") or "2026-10-25")
+        st.markdown("<div style='margin-top:10px;font-weight:700;font-size:13.5px;color:var(--fg)'>Resmi Program Başlangıç Tarihi</div>", unsafe_allow_html=True)
+        col_sd, col_btn25, col_btn26 = st.columns([2, 1, 1], gap="small")
+        with col_sd:
+            new_sd = st.date_input("Başlangıç tarihi", value=cur_start_date, min_value=dt.date(2026, 10, 1),
+                                   max_value=dt.date(2026, 12, 31), format="DD.MM.YYYY", label_visibility="collapsed")
+        with col_btn25:
+            if st.button("25 Ekim", use_container_width=True, key="sd_btn_25"):
+                new_sd = dt.date(2026, 10, 25)
+        with col_btn26:
+            if st.button("26 Ekim", use_container_width=True, key="sd_btn_26"):
+                new_sd = dt.date(2026, 10, 26)
+        b["start_date"] = new_sd.isoformat()
+        st.caption("İğnenin eve varışına göre 25 veya 26 Ekim'i seçebilirsiniz. Tüm sayaçlar, haritalar ve istatistikler bu tarihten itibaren başlar.")
+
         if json.dumps(b, sort_keys=True) != prev_snapshot:
             compute_targets()
             _save()

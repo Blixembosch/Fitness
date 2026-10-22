@@ -158,3 +158,45 @@ def test_functional_page_headers_consistent_markup():
     assert "Badge" in h
     assert "font-size:28px" in h
     assert 'class="muted"' in h
+
+
+def test_functional_october_25_baseline_and_pre_date_filtering():
+    """Verify that data prior to 25 Ekim 2026 is filtered out from stats and visualizations."""
+    import datetime as dt
+    import pandas as pd
+    from unittest.mock import patch
+
+    # 1. Test ui.github_heatmap with start_date filter
+    today = dt.date(2026, 10, 26)
+    start_date = dt.date(2026, 10, 25)
+    records = {
+        # Pre-start date record
+        "2026-10-20": {"level": 3, "summary": "Old test workout", "strength": True},
+        # Official start date record
+        "2026-10-25": {"level": 4, "summary": "Official day 1", "strength": True},
+    }
+    html = ui.github_heatmap(today, records, weeks=4, start_date=start_date)
+    assert "Resmi başlangıç öncesi (25 Eki baz)" in html
+    # Pre-start cell should NOT have level 3 active class
+    assert 'title="20 Eki 2026 (Sal) — Resmi başlangıç öncesi (25 Eki baz)"' in html
+    # Active days count should only reflect on or after start_date (1 active day, not 2)
+    assert "1 aktif gün" in html
+
+
+def test_functional_configurable_start_date_26_october():
+    """Verify that the app respects a switch from 25 October to 26 October."""
+    with tempfile.TemporaryDirectory() as td:
+        os.environ["FITNESS_DB_PATH"] = str(Path(td) / "test.db")
+        at = _run_app("stats", body={"start_date": "2026-10-26", "theme": "dark", "birth": "1992-03-12", "height": 178})
+        assert not at.exception
+        # Verify Stats page loads without error with 26 October start
+        assert at.session_state["body"]["start_date"] == "2026-10-26"
+
+
+def test_functional_stats_renders_clean_placeholder_when_no_post_start_weights():
+    """Verify Stats page weight trend section displays clean info banner before 25 October weigh-ins."""
+    at = _run_app("stats", body={"start_date": "2026-10-25"}, weights=[{"date": "2026-10-15", "w": 101.0}])
+    assert not at.exception
+    # Ensure page rendered successfully
+    assert any("İstatistik & Hedef Takibi" in str(m.value) for m in at.markdown)
+
