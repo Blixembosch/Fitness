@@ -146,26 +146,120 @@ div[data-testid="stButtonGroup"] [role="button"] * {
 }
 
 /* FIX: Number inputs, Text inputs, Date inputs, Selectboxes — NO MORE WHITE BOXES! */
+div.stSelectbox,
+div[data-testid="stSelectbox"] {
+  color:var(--input-fg) !important;
+}
+
+/* Outer combobox wrapper / control box - covers both old BaseWeb and new Streamlit React-Aria */
+div[data-testid="stSelectbox"] > div,
+div[data-testid="stSelectbox"] > div > div,
+div[data-testid="stSelectbox"] > div > div > div,
+div[data-testid="stSelectbox"] [role="combobox"],
+div[data-testid="stSelectbox"] div[class*="e1fp86qc0"],
+div[data-testid="stSelectbox"] div[data-focus-within],
+div[data-testid="stSelectbox"] [data-baseweb="select"],
+div[data-testid="stSelectbox"] [data-baseweb="select"] > div {
+  background:var(--input-bg) !important;
+  background-color:var(--input-bg) !important;
+  color:var(--input-fg) !important;
+  border:1px solid var(--line) !important;
+  border-radius:12px !important;
+  box-shadow:none !important;
+}
+
+/* Selectbox input field & rendered value text */
+div[data-testid="stSelectbox"] input,
+div[data-testid="stSelectbox"] input[type="text"],
+div[data-testid="stSelectbox"] input[role="combobox"],
+div[data-testid="stSelectbox"] [data-baseweb="select"] span,
+div[data-testid="stSelectbox"] [data-baseweb="select"] div,
+div[data-testid="stSelectbox"] div[class*="e1fp86qc1"] {
+  background:transparent !important;
+  background-color:transparent !important;
+  color:var(--input-fg) !important;
+  -webkit-text-fill-color:var(--input-fg) !important;
+  font-family:"Hanken Grotesk",system-ui,sans-serif !important;
+  font-size:14px !important;
+  font-weight:600 !important;
+}
+
+/* Selectbox arrow icon and buttons */
+div[data-testid="stSelectbox"] button,
+div[data-testid="stSelectbox"] svg,
+div[data-testid="stSelectbox"] [aria-label="Open"],
+div[data-testid="stSelectbox"] div[class*="e1fp86qc2"] {
+  color:var(--muted) !important;
+  fill:var(--muted) !important;
+  background:transparent !important;
+}
+
+/* Dropdown Menus / Virtual Dropdowns (rendered in body portals) */
+div[data-testid="stSelectboxVirtualDropdown"],
+div[data-testid="stSelectboxVirtualDropdown"] > div,
+ul[data-testid="stSelectboxVirtualDropdown"],
+div[data-baseweb="popover"],
+div[data-baseweb="popover"] > div,
+div[data-baseweb="menu"],
+ul[role="listbox"] {
+  background:var(--surface) !important;
+  background-color:var(--surface) !important;
+  color:var(--fg) !important;
+  border:1px solid var(--line) !important;
+  border-radius:12px !important;
+  box-shadow:0 10px 30px rgba(0,0,0,.5) !important;
+  overflow:hidden !important;
+}
+
+div[data-testid="stSelectboxVirtualDropdown"] *,
+div[data-baseweb="popover"] *,
+div[data-baseweb="menu"] *,
+ul[role="listbox"] * {
+  color:var(--fg) !important;
+}
+
+div[data-testid="stSelectboxVirtualDropdown"] [role="option"],
+div[data-testid="stSelectboxVirtualDropdown"] li,
+div[data-testid="stSelectboxVirtualDropdown"] div[class*="e1fp86qc7"],
+div[data-testid="stSelectboxVirtualDropdown"] div[class*="e1fp86qc8"],
+ul[role="listbox"] [role="option"],
+ul[role="listbox"] li {
+  color:var(--fg) !important;
+  font-family:"Hanken Grotesk",system-ui,sans-serif !important;
+  font-size:13.5px !important;
+  font-weight:600 !important;
+  padding:8px 12px !important;
+  cursor:pointer !important;
+}
+
+div[data-testid="stSelectboxVirtualDropdown"] [role="option"]:hover,
+div[data-testid="stSelectboxVirtualDropdown"] [data-hovered] [data-item-hl],
+div[data-testid="stSelectboxVirtualDropdown"] [data-focused] [data-item-hl],
+div[data-testid="stSelectboxVirtualDropdown"] [aria-selected="true"],
+ul[role="listbox"] [role="option"]:hover,
+ul[role="listbox"] [aria-selected="true"] {
+  background:var(--surface-elevated) !important;
+  background-color:var(--surface-elevated) !important;
+  color:var(--blue) !important;
+}
+
+/* Number inputs, Text inputs, Date inputs */
 div.stNumberInput,
 div.stTextInput,
 div.stDateInput,
-div.stSelectbox,
 div[data-testid="stNumberInput"],
 div[data-testid="stTextInput"],
-div[data-testid="stDateInput"],
-div[data-testid="stSelectbox"] {
+div[data-testid="stDateInput"] {
   color:var(--input-fg) !important;
 }
 
 div[data-testid="stNumberInputContainer"],
 div[data-testid="stTextInputRootElement"],
+div[data-testid="stDateInputField"],
 div[data-testid="stDateInput"] > div,
 div[data-testid="stDateInput"] [data-baseweb="input"],
-div[data-testid="stSelectbox"] > div,
-div[data-testid="stSelectbox"] [data-baseweb="select"] > div,
 div[data-baseweb="input"],
-div[data-baseweb="base-input"],
-div[data-baseweb="select"] > div {
+div[data-baseweb="base-input"] {
   background:var(--input-bg) !important;
   background-color:var(--input-bg) !important;
   color:var(--input-fg) !important;
@@ -173,19 +267,17 @@ div[data-baseweb="select"] > div {
   border-radius:12px !important;
 }
 
-/* Force all inner input elements to be transparent over input-bg */
 input,
 input[type="text"],
 input[type="number"],
 div[data-testid="stNumberInputField"],
 div[data-testid="stTextInputField"],
-div[data-testid="stDateInputField"],
-[data-baseweb="input"] input,
-[data-baseweb="select"] span,
-[data-baseweb="select"] div {
+div[data-testid="stDateInputField"] input,
+[data-baseweb="input"] input {
   background:transparent !important;
   background-color:transparent !important;
   color:var(--input-fg) !important;
+  -webkit-text-fill-color:var(--input-fg) !important;
 }
 
 /* Number input increment/decrement buttons */
@@ -199,6 +291,47 @@ div[data-testid="stDateInputField"],
 [data-testid="stNumberInputStepUp"]:hover {
   background:var(--surface-elevated) !important;
   color:var(--fg) !important;
+}
+
+/* Date Input Calendar Popup */
+div[data-testid="stDateInputCalendar"],
+div[data-testid="stDateInputCalendar"] > div {
+  background:var(--surface) !important;
+  background-color:var(--surface) !important;
+  color:var(--fg) !important;
+  border:1px solid var(--line) !important;
+  border-radius:14px !important;
+  box-shadow:0 10px 30px rgba(0,0,0,.5) !important;
+}
+div[data-testid="stDateInputCalendar"] * {
+  color:var(--fg) !important;
+}
+div[data-testid="stDateInputCalendar"] button {
+  background:transparent !important;
+  color:var(--fg) !important;
+}
+div[data-testid="stDateInputCalendar"] button:hover {
+  background:var(--surface-elevated) !important;
+  color:var(--blue) !important;
+}
+
+/* Fail-Safe Contrast Guarantee:
+   If ANY container or element renders with white background in dark mode,
+   force dark text so it is NEVER white-on-white! */
+div[style*="background-color: rgb(255, 255, 255)"],
+div[style*="background-color: #ffffff"],
+div[style*="background-color:#ffffff"],
+div[style*="background: rgb(255, 255, 255)"],
+div[style*="background: #ffffff"],
+div[style*="background:#ffffff"] {
+  color:#0f172a !important;
+}
+div[style*="background-color: rgb(255, 255, 255)"] *,
+div[style*="background-color:#ffffff"] *,
+div[style*="background: rgb(255, 255, 255)"] *,
+div[style*="background:#ffffff"] * {
+  color:#0f172a !important;
+  -webkit-text-fill-color:#0f172a !important;
 }
 
 /* High contrast for all widget labels */
@@ -528,8 +661,43 @@ hr{ border-color:var(--line); }
 
 
 def inject(theme: str | None = None):
-    """Inject CSS with automatic media queries for Dark/Light mode based on viewer device."""
-    st.markdown(CSS, unsafe_allow_html=True)
+    """Inject CSS with explicit theme enforcement (Dark by default, or explicit Light if requested)."""
+    css_to_inject = CSS
+    if theme == "dark":
+        dark_override = """
+        <style>
+        :root {
+          --bg:#0b0f19 !important; --surface:#151d2d !important; --surface-2:#1e293b !important; --surface-elevated:#27354d !important;
+          --line:#2e3d5b !important; --line-strong:#475569 !important;
+          --fg:#ffffff !important; --muted:#cbd5e1 !important; --faint:#94a3b8 !important;
+          --blue:#3898ff !important; --purple:#c084fc !important; --orange:#fb923c !important; --green:#34d399 !important; --teal:#22d3ee !important; --red:#f87171 !important;
+          --track:#242c3e !important; --map1:#1e40af !important; --map2:#2563eb !important; --map3:#3898ff !important;
+          --shadow:0 6px 22px rgba(0,0,0,.60) !important;
+          --gh-0:#1e293b !important; --gh-1:#0e4429 !important; --gh-2:#006d32 !important; --gh-3:#26a641 !important; --gh-4:#39d353 !important;
+          --seg-bg:#1e293b !important; --seg-btn:transparent !important; --seg-btn-hover:#27354d !important; --seg-active:#3898ff !important;
+          --input-bg:#151d2d !important; --input-fg:#ffffff !important;
+        }
+        </style>
+        """
+        css_to_inject += "\n" + dark_override
+    elif theme == "light":
+        light_override = """
+        <style>
+        :root {
+          --bg:#f4f6fb !important; --surface:#ffffff !important; --surface-2:#eef2f8 !important; --surface-elevated:#f8fafc !important;
+          --line:#cbd5e1 !important; --line-strong:#94a3b8 !important;
+          --fg:#0f172a !important; --muted:#334155 !important; --faint:#64748b !important;
+          --blue:#0a7aff !important; --purple:#9333ea !important; --orange:#ea580c !important; --green:#16a34a !important; --teal:#0891b2 !important; --red:#dc2626 !important;
+          --track:#e2e8f0 !important; --map1:#bfdbfe !important; --map2:#60a5fa !important; --map3:#0a7aff !important;
+          --shadow:0 2px 12px rgba(15,23,42,.08) !important;
+          --gh-0:#ebedf0 !important; --gh-1:#9be9a8 !important; --gh-2:#40c463 !important; --gh-3:#30a14e !important; --gh-4:#216e39 !important;
+          --seg-bg:#eef2f8 !important; --seg-btn:transparent !important; --seg-btn-hover:#e2e8f0 !important; --seg-active:#0a7aff !important;
+          --input-bg:#ffffff !important; --input-fg:#0f172a !important;
+        }
+        </style>
+        """
+        css_to_inject += "\n" + light_override
+    st.markdown(css_to_inject, unsafe_allow_html=True)
 
 
 def ring_svg(pct: float, color: str, size: int = 54) -> str:

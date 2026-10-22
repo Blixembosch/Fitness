@@ -124,6 +124,22 @@ def test_css_widget_coverage_for_dark_mode():
     assert "stWidgetLabel" in css
     assert "stCaptionContainer" in css
 
+    # Selectbox container, combobox control, and virtual dropdown portal
+    assert 'div[data-testid="stSelectbox"]' in css
+    assert "stSelectboxVirtualDropdown" in css
+    assert "e1fp86qc0" in css or 'role="combobox"' in css
+    assert "-webkit-text-fill-color:var(--input-fg)" in css
+
+
+def test_selectbox_dark_mode_contrast_and_portal_coverage():
+    """Verify that selectboxes in dark mode never have white backgrounds and dropdown portals are covered."""
+    css = ui.CSS
+    assert "div[data-testid=\"stSelectbox\"]" in css
+    assert "background:var(--input-bg)" in css or "background-color:var(--input-bg)" in css
+    assert "stSelectboxVirtualDropdown" in css
+    # Failsafe contrast rule exists
+    assert "color:#0f172a !important" in css or "color: #0f172a !important" in css
+
 
 def test_functional_workout_page_structure():
     """Headless functional test: asserts workout page renders 9 steps,
