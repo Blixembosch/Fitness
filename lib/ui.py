@@ -380,14 +380,36 @@ div[data-testid="stCheckbox"] label span {
   border-color:color-mix(in srgb,var(--blue) 60%,var(--line)) !important;
 }
 
-/* Sleek, modern, compact workout card buttons */
+/* Sleek, modern, compact workout card buttons & strict vertical alignment */
+div[data-testid="column"]:has(.wo-step-box) {
+  display: flex !important;
+  flex-direction: column !important;
+}
+
+div[data-testid="column"] > div[data-testid="stVerticalBlock"]:has(.wo-step-box) {
+  height: 100% !important;
+  display: flex !important;
+  flex-direction: column !important;
+  flex: 1 1 auto !important;
+}
+
 div[data-testid="stVerticalBlockBorderWrapper"]:has(.wo-step-box) {
   padding: 14px 16px !important;
   margin-bottom: 12px !important;
   display: flex !important;
   flex-direction: column !important;
   justify-content: space-between !important;
-  min-height: 100% !important;
+  min-height: 172px !important;
+  height: 100% !important;
+  flex: 1 1 auto !important;
+}
+
+div[data-testid="stVerticalBlockBorderWrapper"]:has(.wo-step-box) > div[data-testid="stVerticalBlock"] {
+  display: flex !important;
+  flex-direction: column !important;
+  justify-content: space-between !important;
+  height: 100% !important;
+  flex: 1 1 auto !important;
 }
 
 div[data-testid="stVerticalBlockBorderWrapper"]:has(.wo-done-marker) {

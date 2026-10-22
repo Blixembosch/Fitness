@@ -13,13 +13,13 @@ FOCUS_COLOR = {"upper": "var(--blue)", "lower": "var(--purple)", "cardio": "var(
 DAYS = [
     {"wd": 0, "key": "upperA", "name": "Üst A", "focus": "upper", "tag": "Üst · A", "note": "Göğüs, sırt, omuz, kol",
      "exercises": [
-         {"id": "0289", "sets": 3, "reps": "8", "tip": "Göğüs; kontrollü indir, patlayarak it. Ağır bileşik → 8."},
+         {"id": "0289", "sets": 3, "reps": "8", "tip": "Göğüs; kontrollü indir, patlayarak it."},
          {"id": "0314", "sets": 3, "reps": "10", "tip": "Üst göğüs; bench ~30°."},
          {"id": "0293", "sets": 3, "reps": "10", "tip": "Sırt; dirseği gövdeye yakın çek, sık."},
-         {"id": "9698", "sets": 3, "reps": "10", "tip": "Sırt (göğüs destekli); belini korur, lat'ı sık."},
+         {"id": "9698", "sets": 3, "reps": "10", "tip": "Sırt; göğüs destekli, lat'ı sık."},
          {"id": "0334", "sets": 3, "reps": "12", "tip": "Omuz yanı; hafif ağırlık, salınımsız."},
          {"id": "0294", "sets": 3, "reps": "10", "tip": "Biceps; dirsek sabit."},
-         {"id": "3449", "sets": 3, "reps": "12", "tip": "Bel/yan karın; her yöne, kontrollü."},
+         {"id": "3449", "sets": 3, "reps": "12", "tip": "Yan karın; her yöne kontrollü rotasyon."},
      ]},
     {"wd": 1, "key": "padelTue", "name": "Padel", "focus": "cardio", "tag": "Padel",
      "note": "Ders 20:00 + maç · kardiyo", "exercises": []},
@@ -36,23 +36,23 @@ DAYS = [
      "note": "Olursa · kardiyo", "exercises": []},
     {"wd": 4, "key": "upperB", "name": "Üst B", "focus": "upper", "tag": "Üst · B", "note": "Omuz, sırt, göğüs, kol",
      "exercises": [
-         {"id": "0405", "sets": 3, "reps": "8", "tip": "Omuz; bench dik, çekirdek sıkı. Ağır bileşik → 8."},
+         {"id": "0405", "sets": 3, "reps": "8", "tip": "Omuz; bench dik, çekirdek sıkı."},
          {"id": "0293", "sets": 3, "reps": "10", "tip": "Sırt; kürek kemiklerini birleştir."},
          {"id": "2982", "sets": 3, "reps": "10", "tip": "Göğüs; yerde, dirsek 45°."},
          {"id": "0378", "sets": 3, "reps": "12", "tip": "Arka omuz; gövde öne eğik."},
          {"id": "0313", "sets": 3, "reps": "10", "tip": "Ön kol/biceps; nötr tutuş."},
          {"id": "0430", "sets": 3, "reps": "12", "tip": "Triceps; tam aç."},
-         {"id": "0407", "sets": 3, "reps": "12", "tip": "Bel/yan karın; tek dambıl, her yöne yana eğil."},
+         {"id": "0407", "sets": 3, "reps": "12", "tip": "Yan karın; tek dambıl, kontrollü yana eğil."},
      ]},
     {"wd": 5, "key": "cardio", "name": "Kardiyo", "focus": "cardio", "tag": "Kardiyo",
      "note": "Tam-vücut kondisyon günü — kürek öncelikli", "exercises": [],
      "cardio": [
          {"name": "Kürek (rower)", "type": "Kürek", "minutes": 20, "kcal": 200, "role": "Kondisyon",
-          "tip": "20 dk interval: 1 dk güçlü çek / 1 dk kolay. Tam-vücut — sırt, bacak ve çekiş; haftanın ana kondisyon işi."},
+          "tip": "20 dk interval (1 dk güçlü / 1 dk kolay) · tam vücut kondisyon."},
          {"name": "Eliptik", "type": "Eliptik", "minutes": 15, "kcal": 150, "role": "Toparlanma",
-          "tip": "15 dk kolay-orta; düşük etkili toparlanma — kürekten sonra soğuma için ideal."},
+          "tip": "15 dk kolay-orta · eklem dostu toparlanma."},
          {"name": "Bisiklet", "type": "Bisiklet", "minutes": 25, "kcal": 220, "role": "Dayanıklılık",
-          "tip": "Alternatif gün: 25 dk sabit tempo ya da 5×(1 dk sprint / 2 dk kolay) — alt-vücut dayanıklılık."},
+          "tip": "25 dk sabit tempo · alt vücut dayanıklılık."},
      ]},
     {"wd": 6, "key": "rest", "name": "Dinlenme", "focus": "rest", "tag": "", "note": "Toparlanma", "exercises": []},
 ]
@@ -81,14 +81,14 @@ PROGRAM_WEEKS = 12
 #   • Bike       — lower-body fat-loss finisher after UPPER days (spares the trained upper body)
 #   • Rower      — full-body conditioning / intervals, on its own cardio day (back + legs + pull)
 WARMUP = {"name": "Eliptik — ısınma", "type": "Eliptik", "minutes": 5, "role": "Isınma",
-          "tip": "Antrenman ÖNCESİ 5 dk KOLAY — eklem ve dolaşım hazırlığı. Eliptik düşük etkili ısınma/toparlanma aletidir."}
+          "tip": "5 dk kolay tempo · eklem ve dolaşım hazırlığı."}
 _FINISHERS = {
     "upper": {"name": "Bisiklet — yağ yakım", "type": "Bisiklet", "minutes": 10, "role": "Bitiriş",
-              "tip": "Antrenman SONUNDA 10 dk orta tempo. Bisiklet alt-vücut kardiyosu — üst antrenmanını yormaz."},
+              "tip": "10 dk orta tempo · alt vücut yağ yakımı."},
     "lower": {"name": "Eliptik — toparlanma", "type": "Eliptik", "minutes": 10, "role": "Bitiriş",
-              "tip": "Antrenman SONUNDA 10 dk kolay-orta. Bacak gününden sonra düşük etkili; eklem dostu."},
+              "tip": "10 dk kolay tempo · eklem dostu toparlanma."},
     "full": {"name": "Bisiklet — yağ yakım", "type": "Bisiklet", "minutes": 10, "role": "Bitiriş",
-             "tip": "Antrenman SONUNDA 10 dk orta tempo."},
+             "tip": "10 dk orta tempo · yağ yakımı."},
 }
 
 
@@ -165,7 +165,7 @@ def workout_steps(day: dict, extra_sets: int = 0) -> list[dict]:
         "eq": "Eliptik",
         "primary": ["quads", "glutes"],
         "secondary": ["calves", "hamstrings"],
-        "tip": "Antrenman ÖNCESİ 5 dk kolay tempo — eklem, nabız ve dolaşım hazırlığı; kasları yormadan ağırlığa hazırlar.",
+        "tip": "5 dk kolay tempo · eklem ve dolaşım hazırlığı.",
     }
     lifts = [{**e, "kind": "lift"} for e in day_details(day, extra_sets)]
     rower = {
@@ -180,7 +180,7 @@ def workout_steps(day: dict, extra_sets: int = 0) -> list[dict]:
         "eq": "Su Küreği (Rower)",
         "primary": ["lats", "upper back", "quads"],
         "secondary": ["glutes", "biceps", "abs"],
-        "tip": "Ağırlık SONRASI 10 dk orta-canlı tempo (1 dk güçlü çekiş / 1 dk akıcı). Glikojen azalmışken tam-vücut (sırt + bacak + core) yağ yakımı ve sırt kası aktivasyonu sağlar.",
+        "tip": "10 dk canlı tempo · tüm vücut metabolik yağ yakımı.",
     }
     eliptik_fin = {
         "id": "cardio_finisher_eliptik",
@@ -194,7 +194,7 @@ def workout_steps(day: dict, extra_sets: int = 0) -> list[dict]:
         "eq": "Eliptik",
         "primary": ["quads", "glutes"],
         "secondary": ["hamstrings", "calves"],
-        "tip": "Antrenman SONUNDA 10 dk Zone-2 sabit tempo — düşük eklem yüküyle ekstra yağ oksidasyonu ve aktif toparlanma sağlar.",
+        "tip": "10 dk Zone-2 sabit tempo · aktif toparlanma ve yağ yakımı.",
     }
     return [warm, *lifts, rower, eliptik_fin]
 

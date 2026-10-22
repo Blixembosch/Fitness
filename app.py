@@ -792,10 +792,11 @@ def _plan_step_box(i: int, e: dict, day_color: str, is_done: bool = False) -> st
     )
     right_lbl = e["reps"] if is_cardio else f"{e['sets']}×{e['reps']}"
     title_txt = e["name"] if is_cardio else e["name"].title()
-    sub_tip = f"<div class='muted' style='font-size:11.5px;margin-top:4px;line-height:1.4'>{e.get('tip','')}</div>" if is_cardio else ""
+    tip_txt = e.get("tip", "")
+    sub_tip = f"<div class='muted' style='font-size:11.5px;margin-top:4px;line-height:1.35'>{tip_txt}</div>" if tip_txt else ""
     border_style = "border-color:color-mix(in srgb,var(--green) 45%,var(--line));" if is_done else ""
     return (
-        f"<div class='exrow' style='align-items:flex-start;{border_style}'>"
+        f"<div class='exrow' style='align-items:flex-start;min-height:90px;{border_style}'>"
         f"<div style='width:34px;height:34px;border-radius:50%;background:{badge_bg};color:{badge_fg};border:1.5px solid {badge_border};"
         f"font-family:Nunito;font-weight:900;font-size:14px;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:2px'>{badge_content}</div>"
         f"<div style='flex:1;min-width:0'><div style='font-weight:800;font-size:14.5px;color:var(--fg)'>{title_txt}</div>"
@@ -966,7 +967,11 @@ def _workout_step_card(
 
     right_lbl = e["reps"] if is_cardio else f"{e['sets']}×{e['reps']}"
     title_txt = e["name"] if is_cardio else e["name"].title()
-    sub_tip = f"<div class='muted' style='font-size:11.5px;margin-top:5px;line-height:1.4'>{e.get('tip','')}</div>" if e.get("tip") else ""
+    tip_txt = e.get("tip", "")
+    sub_tip = (
+        f"<div class='muted' style='font-size:11.5px;margin-top:4px;line-height:1.35;min-height:18px'>{tip_txt}</div>"
+        if tip_txt else "<div style='height:22px'></div>"
+    )
 
     # Set indicator dots (● completed, ○ remaining)
     dots = ""
@@ -979,19 +984,21 @@ def _workout_step_card(
     with st.container(border=True):
         st.markdown(
             f"<div class='wo-step-box'></div>{done_marker}"
-            f"<div style='display:flex;align-items:flex-start;gap:12px;margin-bottom:8px'>"
+            f"<div style='display:flex;align-items:flex-start;gap:12px;min-height:92px;margin-bottom:6px'>"
             f"<div style='width:34px;height:34px;border-radius:50%;background:{badge_bg};color:{badge_fg};"
             f"border:1.5px solid {badge_border};font-family:Nunito;font-weight:900;font-size:14px;"
             f"display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:2px'>{badge_content}</div>"
-            f"<div style='flex:1;min-width:0'>"
+            f"<div style='flex:1;min-width:0;display:flex;flex-direction:column;justify-content:space-between;min-height:86px'>"
+            f"<div>"
             f"<div style='display:flex;justify-content:space-between;align-items:flex-start;gap:6px'>"
-            f"<div style='font-weight:800;font-size:14.5px;color:var(--fg);line-height:1.25'>{title_txt}</div>"
+            f"<div style='font-weight:800;font-size:14.5px;color:var(--fg);line-height:1.25;min-height:36px;display:flex;align-items:flex-start'>{title_txt}</div>"
             f"<div style='text-align:right;flex-shrink:0'>"
             f"<div style='font-family:Nunito;font-weight:800;color:{badge_col};font-size:14.5px'>{right_lbl}</div>"
             f"<div style='margin-top:2px'>{dots}</div>"
             f"</div>"
             f"</div>"
-            f"<div class='chiprow' style='margin-top:4px'>{chips}</div>"
+            f"<div class='chiprow' style='margin-top:4px;min-height:22px;display:flex;align-items:center'>{chips}</div>"
+            f"</div>"
             f"{sub_tip}"
             f"</div></div>",
             unsafe_allow_html=True,
