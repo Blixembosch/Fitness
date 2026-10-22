@@ -9,7 +9,7 @@ import pandas as pd
 import streamlit as st
 import plotly.graph_objects as go
 
-from lib import data, nutrition, bodymap, ui, program as P, metrics, insight, sheets, cronometer, store
+from lib import data, nutrition, bodymap, ui, program as P, metrics, insight, sheets, cronometer, store, calendar_sync
 
 st.set_page_config(page_title="Fitness", page_icon="💪", layout="wide", initial_sidebar_state="collapsed")
 
@@ -143,6 +143,23 @@ def _sheet_data():
         return [], [], 0, {}
 
 
+@st.cache_data(ttl=300, show_spinner=False)
+def _calendar_padel_events(url: str) -> list[dict]:
+    """Padel events from Google Calendar iCal feed. Cached 5 min."""
+    if not url:
+        return []
+    return calendar_sync.fetch_padel_events(url)
+
+
+def calendar_padel_events() -> list[dict]:
+    """Retrieve cached padel events using current secrets or session state URL."""
+    try:
+        url = calendar_sync.get_calendar_url(st.secrets, S)
+    except Exception:
+        url = calendar_sync.get_calendar_url(None, S)
+    return _calendar_padel_events(url) if url else []
+
+
 def cron_ex_df():
     """Cronometer workout sessions as a DataFrame [date, type, cat, padel, minutes, kcal]."""
     cols = ["date", "type", "cat", "padel", "minutes", "kcal"]
@@ -208,11 +225,14 @@ def workouts_week():
 
 
 def padel_dates_all():
-    """Every known padel date (manual + Sheet + Cronometer 'padel' flag)."""
+    """Every known padel date (manual + Sheet + Cronometer + Google Calendar)."""
     allp = set(S["padel"]) | set(_sheet_data()[1])
     cx = cron_ex_df()
     if not cx.empty and "padel" in cx:
         allp |= set(cx[cx["padel"]]["date"])
+    cal_ev = calendar_padel_events()
+    if cal_ev:
+        allp |= calendar_sync.padel_dates_from_events(cal_ev)
     return allp
 
 
@@ -705,8 +725,14 @@ def page_home():
         # Padel Seansı Mini-Kartı & Hızlı Kayıt
         pad_all_dates = padel_dates_all()
         pad_today = TODAY_ISO in pad_all_dates
+        cal_today = calendar_sync.padel_event_for_date(TODAY_ISO, calendar_padel_events())
+        cal_extra = ""
+        if cal_today:
+            t_str = f" · Saat {cal_today['start_time']}" if cal_today.get("start_time") else ""
+            l_str = f" ({cal_today['location']})" if cal_today.get("location") else ""
+            cal_extra = f"<div style='font-size:12px;color:var(--teal);margin-top:5px;font-weight:700'>📅 Google Takvim: {cal_today['summary']}{t_str}{l_str}</div>"
         pad_badge_col = "var(--green)" if pad_today else "var(--teal)"
-        pad_lbl = "Bugün oynandı ✓" if pad_today else "Bugün oynanmadı"
+        pad_lbl = "Bugün oynandı ✓" if pad_today else ("Takvimde planlandı 📅" if cal_today else "Bugün oynanmadı")
         extra_note = f" · Hedef aşıldı 🔥 ({pad}/{ptarg})" if pad > ptarg else (f" · Hedef tamam ✓" if pad == ptarg else "")
         st.markdown(
             f"<div class='fcard' style='margin-bottom:10px;border-color:color-mix(in srgb,{pad_badge_col} 35%,var(--line))'>"
@@ -716,7 +742,8 @@ def page_home():
             f"<div style='display:flex;align-items:baseline;gap:8px;margin-top:6px'>"
             f"<span style='font-family:Nunito;font-weight:900;font-size:24px;color:var(--fg)'>{pad}<small style='font-size:14px;color:var(--muted)'>/{ptarg} seans</small></span>"
             f"<span class='muted' style='font-size:12.5px'>· bu hafta{extra_note}</span></div>"
-            f"<div class='muted' style='font-size:12px;margin-top:4px'>Padel günlerin esnektir; haftalık hedefini dilediğin gibi ayarlayıp tek tıkla kaydedebilirsin.</div></div>",
+            f"<div class='muted' style='font-size:12px;margin-top:4px'>Padel günlerin esnektir; Google Takvim'deki maçların otomatik işlenir veya tek tıkla kaydedebilirsin.</div>"
+            f"{cal_extra}</div>",
             unsafe_allow_html=True,
         )
         col_btn, col_set = st.columns([2.8, 1.2], gap="small")
@@ -864,7 +891,14 @@ def page_plan():
     day = P.DAYS[sel]
     color = P.FOCUS_COLOR[day["focus"]]
     title = "Bugün" if sel == TODAY.weekday() else DOW_LONG[sel]
-    st.markdown(f"<p class='eyebrow' style='margin-top:14px'>{title}</p>", unsafe_allow_html=True)
+    sel_date = WEEK_START + dt.timedelta(days=sel)
+    sel_iso = sel_date.strftime("%Y-%m-%d")
+    cal_sel = calendar_sync.padel_event_for_date(sel_iso, calendar_padel_events())
+    cal_tag = ""
+    if cal_sel:
+        t_str = f" ({cal_sel['start_time']})" if cal_sel.get("start_time") else ""
+        cal_tag = f" &nbsp;·&nbsp; <span style='color:var(--teal);font-weight:700'>📅 Google Takvim: {cal_sel['summary']}{t_str}</span>"
+    st.markdown(f"<p class='eyebrow' style='margin-top:14px'>{title}{cal_tag}</p>", unsafe_allow_html=True)
 
     if day["exercises"]:
         load = P.day_load(day, extra)
@@ -1052,15 +1086,21 @@ def page_workout():
     names = [d["name"] for d in training]
     today = P.day_for(TODAY.weekday())
     default = today["name"] if today in training else names[0]
-    if P.day_cardio(today):
+    done_iso = TODAY.strftime("%Y-%m-%d")
+    pad_today = done_iso in padel_dates_all()
+    cal_today = calendar_sync.padel_event_for_date(done_iso, calendar_padel_events())
+
+    if cal_today:
+        t_str = f" (Saat {cal_today['start_time']})" if cal_today.get("start_time") else ""
+        l_str = f" @ {cal_today['location']}" if cal_today.get("location") else ""
+        st.info(f"🎾 **Google Takvim**: Bugün **{cal_today['summary']}**{t_str}{l_str} planlanmış. Günlük program Padel odağında uyarlandı!")
+    elif P.day_cardio(today):
         boxes = "".join(_cardio_box(c) for c in P.day_cardio(today))
         st.markdown(f"<p class='eyebrow'>Bugün · {today['name']}</p>", unsafe_allow_html=True)
         st.markdown(f"<div class='exgrid' style='margin-bottom:10px'>{boxes}</div>", unsafe_allow_html=True)
         st.caption("Kürek/eliptik/bisiklet Apple Health'ten Crono'ya düşünce İstatistik'te otomatik işaretlenir. Aşağıdan bir güç antrenmanı da seçebilirsin.")
     elif not today["exercises"]:
         st.info(f"Bugün **{today['name']}** — {today.get('note','')}. İstersen aşağıdan bir antrenman seç ve çalış.")
-    done_iso = TODAY.strftime("%Y-%m-%d")
-    pad_today = done_iso in padel_dates_all()
     col_wsel, col_pad, col_pset = st.columns([2.5, 1.1, 0.4], gap="small")
     with col_wsel:
         choice = st.segmented_control("Antrenman", names, default=default, key="wsel", label_visibility="collapsed") or default
@@ -1636,6 +1676,35 @@ def page_nutrition():
             _save()
             st.toast("Hedef ayarların kalıcı olarak kaydedildi ✓")
         st.caption("Kilo değiştikçe hedefler otomatik güncellenir ve yerel SQLite veritabanında saklanır.")
+
+        st.markdown("<hr style='margin:14px 0 10px;border-color:var(--line)'>", unsafe_allow_html=True)
+        st.markdown("<div style='font-weight:800;font-size:13.5px;color:var(--fg)'>📅 Google Takvim Entegrasyonu</div>", unsafe_allow_html=True)
+        try:
+            sec_url = st.secrets.get("GOOGLE_CALENDAR_ICAL_URL") or st.secrets.get("GCAL_ICAL_URL")
+        except Exception:
+            sec_url = None
+        cur_cal_url = sec_url or S.get("settings", {}).get("gcal_url", "")
+        cal_events = calendar_padel_events()
+        if sec_url:
+            st.success(f"✓ Google Takvim `secrets.toml` üzerinden bağlı ({len(cal_events)} Padel seansı tespit edildi).")
+        elif cur_cal_url:
+            st.success(f"✓ Google Takvim bağlı ({len(cal_events)} Padel seansı tespit edildi).")
+        else:
+            st.caption("Google Takvim'den Padel maçlarını otomatik çekmek için gizli iCal linkinizi `.streamlit/secrets.toml` dosyasına veya aşağıdaki kutuya ekleyebilirsiniz.")
+
+        new_cal_url = st.text_input(
+            "Google Takvim Gizli iCal URL'si (.ics)",
+            value=cur_cal_url or "",
+            type="password",
+            help="Google Takvim → Ayarlar → İlgili Takvim → iCal biçiminde gizli adres",
+            key="gcal_url_input",
+            disabled=bool(sec_url),
+        )
+        if not sec_url and new_cal_url != (S.get("settings", {}).get("gcal_url") or ""):
+            S.setdefault("settings", {})["gcal_url"] = new_cal_url.strip()
+            _save()
+            st.cache_data.clear()
+            st.rerun()
 
     t = S["targets"]
     pband = S["protein_band"]

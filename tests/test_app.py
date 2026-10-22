@@ -53,3 +53,11 @@ def test_logging_a_set_updates_state():
         wbtn.click().run()
         assert not at.exception
         assert at.session_state["setlog"].get(wbtn.key.replace("s_", "")) == 1
+
+
+def test_calendar_sync_integration():
+    from unittest.mock import patch
+    events = [{"summary": "Padel Maçı", "date": "2026-10-22", "start_time": "19:30", "is_padel": True, "location": "Peak"}]
+    with patch("lib.calendar_sync.fetch_padel_events", return_value=events):
+        at = _run("home", settings={"gcal_url": "https://calendar.google.com/ical/mock.ics"})
+        assert not at.exception
