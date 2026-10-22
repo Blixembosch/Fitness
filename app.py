@@ -19,7 +19,7 @@ S.setdefault("page", "home")
 # Body stats drive the targets. `protein_mode="adjusted"` uses adjusted bodyweight (BMI > 25) so
 # the daily protein target sits in a sustainable 150–180 g muscle-preservation band on Wegovy.
 S.setdefault("body", {"birth": "1992-03-12", "height": 178, "sex": "male", "activity": "light",
-                      "deficit": 500, "kcal_goal": 1900, "protein_mode": "adjusted", "theme": "dark"})
+                      "deficit": 500, "kcal_goal": 2000, "protein_mode": "adjusted", "theme": "dark"})
 WEGOVY_DOSES = [0.25, 0.5, 1.0, 1.7, 2.4]
 WEGOVY_SITES = ["Sol karın", "Sağ karın", "Sol üst bacak", "Sağ üst bacak", "Sol üst kol", "Sağ üst kol"]
 S.setdefault("wegovy", {"dose_mg": 0.25, "inj_weekday": 5, "logs": []})  # default Saturday (5)
@@ -1342,7 +1342,7 @@ def page_nutrition():
                                  help="Kapalıyken hedef, TDEE − açık ile otomatik hesaplanır.")
         if use_manual:
             b["kcal_goal"] = int(st.number_input("Günlük kalori hedefi (kcal)", 1200, 3500,
-                                                 int(b.get("kcal_goal") or 1900), step=50))
+                                                 int(b.get("kcal_goal") or 2000), step=50))
             st.caption(f"~0,5–1%/hafta (bu kiloda ~{wkg*0.005:.1f}–{wkg*0.01:.1f} kg) kas koruma için ideal bant.")
         else:
             b["kcal_goal"] = None

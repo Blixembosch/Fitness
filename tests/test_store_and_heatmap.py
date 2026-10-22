@@ -84,3 +84,25 @@ def test_insight_accepts_app_payload_keys():
         "deficit_kcal": 500,
     })
     assert "1.4" in note or "set/hafta" in note
+
+
+def test_sql_dump_and_restore(tmp_path=None):
+    if tmp_path is None:
+        tmp_path = pathlib.Path(tempfile.mkdtemp())
+    db1 = tmp_path / "origin.db"
+    db2 = tmp_path / "restored.db"
+
+    data = {"body": {"kcal_goal": 2000, "theme": "dark"}, "weights": [{"date": "2026-10-22", "w": 100.2}]}
+    store.save_raw(data, db_path=db1, sync_cloud=False)
+
+    sql = store.dump_sql(db1)
+    assert "CREATE TABLE kv" in sql
+    assert "2000" in sql
+
+    ok = store.restore_sql(sql, db2)
+    assert ok is True
+
+    loaded = store.load_all(db_path=db2)
+    assert loaded["body"]["kcal_goal"] == 2000
+    assert loaded["weights"][0]["w"] == 100.2
+
