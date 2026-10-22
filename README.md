@@ -6,11 +6,11 @@ Wegovy (GLP-1) sürecinde **kas kütlesini koruma/artırma, yağ yakımı ve met
 
 ## Özellikler & Ekranlar
 
-- **Ana Sayfa:** Üçlü aktivite halkaları (antrenman, protein, kalori hedefi), günün antrenman kartı, kilo değişimi, vücut kompozisyonu özeti ve 52 haftalık GitHub katkı grafiği (heatmap).
+- **Ana Sayfa:** Dörtlü aktivite halkaları (antrenman, dinamik padel, protein, kalori hedefi), tek tıkla Padel hızlı kaydı ve hedef ayarı, günün antrenman kartı, kilo değişimi, Wegovy mini-kartı ve 52 haftalık GitHub katkı grafiği (heatmap).
 - **Plan:** 12 haftalık periodize program takvimi (Hazırlık, Temel, İnşa, Zirve fazları). Düşük eklem yüküyle eklem ve nabız hazırlığı, güç hareketleri ve antrenman sonu yağ yakım/soğuma adımları.
-- **Antrenman:** Numaralandırılmış minimalist adımlar (1..9), egzersiz bazlı kas haritaları, dambıl ağırlık takibi ve tek tıkla kalıcı antrenman tamamlama/geri alma.
-- **İstatistik:** Hafta, ay ve 3 aylık (ISO hafta numaralı) antrenman/padel dağılımı, haftalık % kilo kaybı güvenlik göstergesi (hızlı kas kaybı uyarısı) ve çalışılan kasların görsel anatomik haritası.
-- **Beslenme:** Cronometer dışa aktarım dosyaları (dailysummary, exercises, biometrics) üzerinden kalori, protein, lif ve makro takibi; Wegovy doz/enjeksiyon bölgesi rotasyonu ve hedef kalori (2000 kcal) yönetimi.
+- **Antrenman:** Numaralandırılmış minimalist adımlar (1..9), egzersiz bazlı kas haritaları, dambıl ağırlık takibi, tek tıkla kalıcı antrenman tamamlama/geri alma ve esnek Padel seansı kaydı & hızlı hedef yönetimi.
+- **İstatistik:** Hafta, ay ve 3 aylık (ISO hafta numaralı) antrenman/padel dağılımı, esnek padel hedeflerine göre güncellenen periyot barları, haftalık % kilo kaybı güvenlik göstergesi (hızlı kas kaybı uyarısı) ve çalışılan kasların görsel anatomik haritası.
+- **Beslenme:** Cronometer dışa aktarım dosyaları (dailysummary, exercises, biometrics) üzerinden kalori, protein, lif ve makro takibi; Wegovy doz/enjeksiyon bölgesi rotasyonu, haftalık dinamik padel hedefi ve kalori/protein yönetimi.
 
 ---
 

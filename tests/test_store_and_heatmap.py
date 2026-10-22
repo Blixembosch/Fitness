@@ -106,3 +106,24 @@ def test_sql_dump_and_restore(tmp_path=None):
     assert loaded["body"]["kcal_goal"] == 2000
     assert loaded["weights"][0]["w"] == 100.2
 
+
+def test_dynamic_padel_tracking_and_target(tmp_path=None):
+    if tmp_path is None:
+        tmp_path = pathlib.Path(tempfile.mkdtemp())
+    db = tmp_path / "test_padel.db"
+
+    # Save session with custom padel_target = 3 and padel sessions on arbitrary days
+    s1 = {
+        "body": {"padel_target": 3, "kcal_goal": 2000},
+        "padel": ["2026-10-21", "2026-10-23", "2026-10-25"],
+    }
+    store.persist_session(s1, db_path=db)
+
+    # Hydrate new session
+    s2 = {"body": {"kcal_goal": 1900}, "padel": []}
+    store.hydrate_session(s2, db_path=db)
+    assert s2["body"]["padel_target"] == 3
+    assert len(s2["padel"]) == 3
+    assert "2026-10-23" in s2["padel"]
+
+

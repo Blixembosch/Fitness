@@ -27,8 +27,14 @@ S.setdefault("wegovy", {"dose_mg": 0.25, "inj_weekday": 5, "logs": []})  # defau
 PROTEIN_PER_KG = 1.8
 FIBER_TARGET = 28           # g/day — key for GI comfort on GLP-1 (Wegovy)
 PROGRAM_WEEKS = 12          # the plan runs as a 12-week block from the baseline
-PADEL_TARGET = 2            # planned padel days/week (actual can exceed it)
+PADEL_TARGET = 2            # default planned padel days/week (now dynamic via body settings)
 STRENGTH_TARGET = 3         # planned strength sessions/week (Üst A / Alt A / Üst B)
+
+
+def get_padel_target() -> int:
+    """Dynamic weekly padel target from body settings (default: 2 sessions/week)."""
+    return int(S.get("body", {}).get("padel_target") or PADEL_TARGET)
+
 S.setdefault("weights", [{"date": "2026-10-12", "w": 101.1}, {"date": "2026-10-16", "w": 101.1}, {"date": "2026-10-19", "w": 100.5}])
 S.setdefault("workouts", [])          # [{date, key, name, primary, secondary}]
 S.setdefault("padel", [])             # [iso date]
@@ -47,6 +53,7 @@ START_DATE = dt.date(2026, 10, 31)    # baseline: progress (weight, streak) is m
 START_ISO = START_DATE.strftime("%Y-%m-%d")
 
 TODAY = dt.date.today()
+TODAY_ISO = TODAY.strftime("%Y-%m-%d")
 NOW = dt.datetime.now()
 GREET = "İyi geceler" if NOW.hour < 6 else "Günaydın" if NOW.hour < 12 else "İyi günler" if NOW.hour < 18 else "İyi akşamlar"
 MON = ["Oca", "Şub", "Mar", "Nis", "May", "Haz", "Tem", "Ağu", "Eyl", "Eki", "Kas", "Ara"]
@@ -309,14 +316,59 @@ def program_week_grid(week_start: dt.date):
         d = week_start + dt.timedelta(days=i)
         iso = d.strftime("%Y-%m-%d")
         day = P.DAYS[i]
-        is_padel = "padel" in day["key"].lower()
-        is_lift = day["focus"] in ("upper", "lower", "full")
-        is_cardio = bool(P.day_cardio(day))
-        kind = "padel" if is_padel else "lift" if is_lift else "cardio" if is_cardio else day["focus"]
-        color = "var(--teal)" if is_padel else P.FOCUS_COLOR.get(day["focus"], "var(--line)")
-        done = (iso in strv) if is_lift else (iso in padv) if is_padel else (iso in crdv) if is_cardio else False
-        grid.append({"dow": DOW[i], "day": d.day, "iso": iso, "name": day["name"], "color": color,
-                     "kind": kind, "planned": is_lift or is_padel or is_cardio, "done": done})
+        has_str = iso in strv
+        has_pad = iso in padv
+        has_crd = iso in crdv
+
+        is_plan_pad = "padel" in day["key"].lower()
+        is_plan_lift = day["focus"] in ("upper", "lower", "full")
+        is_plan_crd = bool(P.day_cardio(day))
+
+        # Dynamic priority: if actual workouts happened, reflect them accurately
+        if has_pad and has_str:
+            kind = "lift"
+            name = f"{day['name']} + 🎾"
+            color = "var(--blue)"
+            done = True
+        elif has_pad:
+            kind = "padel"
+            name = "Padel" if not is_plan_pad else day["name"]
+            color = "var(--teal)"
+            done = True
+        elif has_str:
+            kind = "lift"
+            name = day["name"] if is_plan_lift else "Güç"
+            color = P.FOCUS_COLOR.get(day["focus"], "var(--blue)")
+            done = True
+        elif has_crd:
+            kind = "cardio"
+            name = "Kardiyo"
+            color = "var(--green)"
+            done = True
+        elif is_plan_pad:
+            kind = "padel"
+            name = day["name"]
+            color = "var(--teal)"
+            done = False
+        elif is_plan_lift:
+            kind = "lift"
+            name = day["name"]
+            color = P.FOCUS_COLOR.get(day["focus"], "var(--line)")
+            done = False
+        elif is_plan_crd:
+            kind = "cardio"
+            name = day["name"]
+            color = "var(--green)"
+            done = False
+        else:
+            kind = day["focus"]
+            name = day["name"]
+            color = "var(--line)"
+            done = False
+
+        planned = is_plan_lift or is_plan_pad or is_plan_crd
+        grid.append({"dow": DOW[i], "day": d.day, "iso": iso, "name": name, "color": color,
+                     "kind": kind, "planned": planned, "done": done})
     return grid
 
 
@@ -462,8 +514,9 @@ def program_adjustment():
         if status == "good":
             status = "warn"
         lines.append(f"🏋️ Bu hafta <b>{strv}/{STRENGTH_TARGET}</b> antrenman — kalan güç günlerini tamamla (kas koruma önceliği).")
-    if pad < PADEL_TARGET:
-        lines.append(f"🎾 Padel <b>{pad}/{PADEL_TARGET}</b> — hedefe ulaşmaya çalış (ekstrası serbest).")
+    ptarg = get_padel_target()
+    if pad < ptarg:
+        lines.append(f"🎾 Padel <b>{pad}/{ptarg}</b> — hedefe ulaşmaya çalış (ekstrası serbest).")
     return (status, lines)
 
 
@@ -560,8 +613,9 @@ def page_home():
     pband = S["protein_band"]
     strv, pad = week_counts(WEEK_ISO)
 
+    ptarg = get_padel_target()
     r1 = ui.ring(strv / STRENGTH_TARGET if strv else 0, "var(--blue)", f"{strv}<small>/{STRENGTH_TARGET}</small>", "Antrenman", 50)
-    r2 = ui.ring(pad / PADEL_TARGET if PADEL_TARGET else 0, "var(--teal)", f"{pad}<small>/{PADEL_TARGET}</small>", "Padel", 50)
+    r2 = ui.ring(pad / ptarg if ptarg else 0, "var(--teal)", f"{pad}<small>/{ptarg}</small>", "Padel", 50)
     r3 = ui.ring(prot / t["protein"] if t["protein"] else 0, "var(--orange)", f"{prot}<small>/{t['protein']}</small>", f"Protein ({pband['min']}–{pband['max']}g)", 50)
     r4 = ui.ring(kcal / t["kcal"] if t["kcal"] else 0, "var(--green)", f"{kcal}<small>/{t['kcal']}</small>", "Kalori", 50)
     st.markdown(f"<div class='rings'>{r1}{r2}{r3}{r4}</div>", unsafe_allow_html=True)
@@ -647,6 +701,45 @@ def page_home():
                 S["wegovy"]["logs"] = logs
                 _save()
                 st.rerun()
+
+        # Padel Seansı Mini-Kartı & Hızlı Kayıt
+        pad_all_dates = padel_dates_all()
+        pad_today = TODAY_ISO in pad_all_dates
+        pad_badge_col = "var(--green)" if pad_today else "var(--teal)"
+        pad_lbl = "Bugün oynandı ✓" if pad_today else "Bugün oynanmadı"
+        extra_note = f" · Hedef aşıldı 🔥 ({pad}/{ptarg})" if pad > ptarg else (f" · Hedef tamam ✓" if pad == ptarg else "")
+        st.markdown(
+            f"<div class='fcard' style='margin-bottom:10px;border-color:color-mix(in srgb,{pad_badge_col} 35%,var(--line))'>"
+            f"<div style='display:flex;justify-content:space-between;align-items:center'>"
+            f"<div class='eyebrow' style='margin:0'>🎾 Padel Seansı</div>"
+            f"<span class='chip' style='color:{pad_badge_col};font-size:11px'>{pad_lbl}</span></div>"
+            f"<div style='display:flex;align-items:baseline;gap:8px;margin-top:6px'>"
+            f"<span style='font-family:Nunito;font-weight:900;font-size:24px;color:var(--fg)'>{pad}<small style='font-size:14px;color:var(--muted)'>/{ptarg} seans</small></span>"
+            f"<span class='muted' style='font-size:12.5px'>· bu hafta{extra_note}</span></div>"
+            f"<div class='muted' style='font-size:12px;margin-top:4px'>Padel günlerin esnektir; haftalık hedefini dilediğin gibi ayarlayıp tek tıkla kaydedebilirsin.</div></div>",
+            unsafe_allow_html=True,
+        )
+        col_btn, col_set = st.columns([2.8, 1.2], gap="small")
+        with col_btn:
+            if pad_today:
+                if st.button("↺ Padel kaydını geri al", key="home_padel_undo", use_container_width=True):
+                    S["padel"] = [d for d in S["padel"] if d != TODAY_ISO]
+                    _save()
+                    st.rerun()
+            else:
+                if st.button("🎾 Bugün Padel oynadım (+1)", key="home_padel_add", use_container_width=True):
+                    if TODAY_ISO not in S["padel"]:
+                        S["padel"].append(TODAY_ISO)
+                        _save()
+                        st.rerun()
+        with col_set:
+            with st.popover(f"⚙️ {ptarg}/hf", use_container_width=True):
+                st.caption("Haftalık Padel Hedefi")
+                new_ptarg = int(st.number_input("Hedef seans", 1, 7, ptarg, key="home_ptarg_input"))
+                if new_ptarg != ptarg:
+                    S.setdefault("body", {})["padel_target"] = new_ptarg
+                    _save()
+                    st.rerun()
 
         act = today_activity()
         if act:
@@ -833,7 +926,32 @@ def page_workout():
         st.caption("Kürek/eliptik/bisiklet Apple Health'ten Crono'ya düşünce İstatistik'te otomatik işaretlenir. Aşağıdan bir güç antrenmanı da seçebilirsin.")
     elif not today["exercises"]:
         st.info(f"Bugün **{today['name']}** — {today.get('note','')}. İstersen aşağıdan bir antrenman seç ve çalış.")
-    choice = st.segmented_control("Antrenman", names, default=default, key="wsel", label_visibility="collapsed") or default
+    done_iso = TODAY.strftime("%Y-%m-%d")
+    pad_today = done_iso in padel_dates_all()
+    col_wsel, col_pad, col_pset = st.columns([2.5, 1.1, 0.4], gap="small")
+    with col_wsel:
+        choice = st.segmented_control("Antrenman", names, default=default, key="wsel", label_visibility="collapsed") or default
+    with col_pad:
+        if pad_today:
+            if st.button("🎾 Padel ✓ (↺)", key="w_pad_btn", use_container_width=True, help="Bugünkü padel kaydını geri al"):
+                S["padel"] = [d for d in S["padel"] if d != done_iso]
+                _save()
+                st.rerun()
+        else:
+            if st.button("🎾 Padel Oynadım", key="w_pad_btn", use_container_width=True, help="Bugün Padel oynadığını kaydet"):
+                if done_iso not in S["padel"]:
+                    S["padel"].append(done_iso)
+                    _save()
+                    st.rerun()
+    with col_pset:
+        ptarg_cur = get_padel_target()
+        with st.popover(f"⚙️{ptarg_cur}", use_container_width=True):
+            st.caption("Haftalık Padel Hedefi")
+            npt = int(st.number_input("Seans/hf", 1, 7, ptarg_cur, key="wo_ptarg_input"))
+            if npt != ptarg_cur:
+                S.setdefault("body", {})["padel_target"] = npt
+                _save()
+                st.rerun()
     day = next(d for d in training if d["name"] == choice)
     color = P.FOCUS_COLOR[day["focus"]]
     phase, extra = current_phase()
@@ -841,7 +959,6 @@ def page_workout():
     steps = P.workout_steps(day, extra)
     ws = wegovy_status()
     weg_note = f" · 💉 Wegovy ({ws['dose_mg']:g} mg) 48s esnek RPE" if ws["in_48h"] else ""
-    done_iso = TODAY.strftime("%Y-%m-%d")
 
     already = any(w["date"] == done_iso and w.get("key") == day["key"] for w in S["workouts"])
     status_tag = " · <span style='color:var(--green);font-weight:700'>Tamamlandı ✓</span>" if already else ""
@@ -849,6 +966,8 @@ def page_workout():
     chips = "".join(f"<span class='chip'>{g}</span>" for g in P.day_groups(day))
     chips += "<span class='chip' style='color:var(--green)'>🏃 Eliptik 5+10 dk</span>"
     chips += "<span class='chip' style='color:var(--orange)'>🚣 Kürek 10 dk</span>"
+    if pad_today:
+        chips += "<span class='chip' style='color:var(--teal)'>🎾 Bugün Padel de Yapıldı</span>"
 
     st.markdown(
         f"<div class='hero' style='background:radial-gradient(130% 90% at 100% 0%, color-mix(in srgb,{color} 28%,transparent), transparent 60%), linear-gradient(165deg, color-mix(in srgb,{color} 13%,var(--surface)), var(--surface) 80%);border:1.5px solid color-mix(in srgb,{color} 36%,var(--line));box-shadow:var(--shadow);margin-bottom:14px'>"
@@ -928,6 +1047,7 @@ def _render_period_plan_view(period: str):
     """Render the period-specific target & calendar breakdown so switching between 'Hafta', 'Ay',
     and '3 Ay' in Stats transforms the calendar/target view dynamically."""
     today_iso = TODAY.strftime("%Y-%m-%d")
+    ptarg = get_padel_target()
     if period == "Hafta":
         strv, padv = week_counts(WEEK_ISO)
         grid = program_week_grid(WEEK_START)
@@ -952,27 +1072,27 @@ def _render_period_plan_view(period: str):
             f"<div class='eyebrow' style='margin:0'>Haftalık Plan & Gerçekleşen ({WEEK_START.day}–{(WEEK_START+dt.timedelta(days=6)).day} {MON[TODAY.month-1]})</div>"
             f"<div style='font-size:12.5px;font-weight:800'>"
             f"<span style='color:var(--blue)'>● {strv}/{STRENGTH_TARGET} güç</span> &nbsp;·&nbsp; "
-            f"<span style='color:var(--teal)'>● {padv}/{PADEL_TARGET} padel</span></div></div>"
+            f"<span style='color:var(--teal)'>● {padv}/{ptarg} padel</span></div></div>"
             f"<div class='wk-strip'>{cells}</div></div>",
             unsafe_allow_html=True,
         )
     elif period == "Ay":
         # 4-week (28-day) calendar matrix ending this week
         start_mon = WEEK_START - dt.timedelta(weeks=3)
+        start_mon_iso = start_mon.strftime("%Y-%m-%d")
         headers = "".join(f"<div style='text-align:center;font-size:11px;font-weight:800;color:var(--muted)'>{d}</div>" for d in DOW)
         cells = ""
-        tot_str = tot_pad = tot_crd = 0
+        str_all = strength_dates_all()
+        pad_all = padel_dates_all()
+        crd_all = cardio_dates_all()
+        tot_str = len([d for d in str_all if d >= start_mon_iso])
+        tot_pad = len([d for d in pad_all if d >= start_mon_iso])
+        tot_crd = len([d for d in crd_all if d >= start_mon_iso])
         for w in range(4):
             w_mon = start_mon + dt.timedelta(weeks=w)
             for g in program_week_grid(w_mon):
                 is_today = g["iso"] == today_iso
                 cls = "mo-cell" + (" today" if is_today else "") + (" done" if g["done"] else "")
-                if g["done"] and g["kind"] == "lift":
-                    tot_str += 1
-                elif g["done"] and g["kind"] == "padel":
-                    tot_pad += 1
-                elif g["done"] and g["kind"] == "cardio":
-                    tot_crd += 1
                 dt_obj = dt.date.fromisoformat(g["iso"])
                 status_mark = "✅" if g["done"] else ("●" if is_today else "")
                 cells += (
@@ -981,9 +1101,10 @@ def _render_period_plan_view(period: str):
                     f"<div style='color:{g['color']};font-weight:800;font-size:11px;margin-top:2px'>{g['name']} {status_mark}</div>"
                     f"</div>"
                 )
+        pad_target_mo = ptarg * 4
         bars = "".join([
             ui.bar("Aylık Güç Antrenmanı (Hedef: 12 seans)", f"{tot_str} / 12 seans", tot_str / 12 * 100, "var(--blue)"),
-            ui.bar("Aylık Padel (Hedef: 8 seans)", f"{tot_pad} / 8 seans", tot_pad / 8 * 100, "var(--teal)"),
+            ui.bar(f"Aylık Padel (Hedef: {pad_target_mo} seans)", f"{tot_pad} / {pad_target_mo} seans", tot_pad / max(1, pad_target_mo) * 100, "var(--teal)"),
             ui.bar("Aylık Kardiyo Günü (Hedef: 4 seans)", f"{tot_crd} / 4 seans", tot_crd / 4 * 100, "var(--green)"),
         ])
         st.markdown(
@@ -991,7 +1112,7 @@ def _render_period_plan_view(period: str):
             f"<div class='eyebrow' style='margin:0'>Aylık Takvim & Hedef Takibi (Son 4 Hafta · 28 Gün)</div>"
             f"<div style='font-size:12.5px;font-weight:800'>"
             f"<span style='color:var(--blue)'>● {tot_str}/12 güç</span> &nbsp;·&nbsp; "
-            f"<span style='color:var(--teal)'>● {tot_pad}/8 padel</span> &nbsp;·&nbsp; "
+            f"<span style='color:var(--teal)'>● {tot_pad}/{pad_target_mo} padel</span> &nbsp;·&nbsp; "
             f"<span style='color:var(--green)'>● {tot_crd}/4 kardiyo</span></div></div>"
             f"<div class='mo-grid' style='margin-bottom:14px'>{headers}{cells}</div>"
             f"<div class='bars'>{bars}</div></div>",
@@ -1018,7 +1139,7 @@ def _render_period_plan_view(period: str):
                 f"Hafta {iso_week} · Blok H{w}</div>"
                 f"<div style='font-weight:800;font-size:12.5px;margin:3px 0;color:var(--fg)'>{w_start.day} {MON[w_start.month-1]}–{w_end.day} {MON[w_end.month-1]}</div>"
                 f"<div style='font-size:11px;color:var(--muted);margin-bottom:2px'>{ph['name'].split('·')[0].strip()} · RPE {ph['rpe']}</div>"
-                f"<div class='muted' style='font-size:10.5px;font-weight:700'>{s_cnt}/{STRENGTH_TARGET} güç · {p_cnt}/{PADEL_TARGET} padel</div>"
+                f"<div class='muted' style='font-size:10.5px;font-weight:700'>{s_cnt}/{STRENGTH_TARGET} güç · {p_cnt}/{ptarg} padel</div>"
                 f"</div>"
             )
         st.markdown(
@@ -1072,7 +1193,7 @@ def page_stats():
 
     weeks_factor = 1 if period == "Hafta" else 4 if period == "Ay" else 12
     str_goal_period = STRENGTH_TARGET * weeks_factor
-    pad_goal_period = PADEL_TARGET * weeks_factor
+    pad_goal_period = get_padel_target() * weeks_factor
 
     tiles = "".join([
         ui.tile(f"Güç ({period})", f"{len(wk_in_period)}<small>/{str_goal_period}</small>", f"son {days} gün · {len(pad_in_period)}/{pad_goal_period} padel", "good" if len(wk_in_period) >= str_goal_period else ""),
@@ -1367,6 +1488,9 @@ def page_nutrition():
         acts = ["light", "moderate", "high"]
         b["activity"] = st.selectbox("Aktivite düzeyi", acts, index=acts.index(b["activity"]),
                                      format_func=lambda x: {"light": "Az hareketli (masa başı)", "moderate": "Orta", "high": "Yüksek"}[x])
+        cur_ptarg = int(b.get("padel_target") or 2)
+        b["padel_target"] = int(st.number_input("Haftalık Padel hedefi (seans/hafta)", 1, 7, cur_ptarg, step=1,
+                                                help="Padel sıklığınıza göre esnek değiştirebilirsiniz (Varsayılan: 2 seans/hafta)."))
         if json.dumps(b, sort_keys=True) != prev_snapshot:
             compute_targets()
             _save()
