@@ -391,3 +391,49 @@ def test_functional_macro_targets_and_nutrition_page():
         stats_rendered = " ".join(str(m.value) for m in at.markdown)
         assert "Sağlıklı yağ" in stats_rendered
         assert "Karbonhidrat" in stats_rendered
+
+
+def test_functional_plan_to_workout_navigation_preserves_workout():
+    """Verify clicking '▶ Antrenmana git' on 25 Oct Plan navigates to Üst A, never Üst B."""
+    with tempfile.TemporaryDirectory() as td:
+        os.environ["FITNESS_DB_PATH"] = str(Path(td) / "test.db")
+        at = _run_app("plan")
+        assert not at.exception
+
+        # Find the goto workout button for 25 Oct kickoff (Üst A)
+        btn = next((b for b in at.button if b.key == "plan_goto_2026-10-25"), None)
+        assert btn is not None, "Button plan_goto_2026-10-25 missing on Plan page"
+        assert "Antrenmana git" in btn.label
+
+        # Click the button and execute the callback
+        btn.click().run()
+        assert not at.exception
+
+        # Verify page transitioned to workout and selected workout is explicitly Üst A
+        assert at.session_state["page"] == "workout"
+        assert at.session_state["wsel"] == "Üst A", f"Expected 'Üst A', got '{at.session_state.get('wsel')}'"
+
+        # Verify header on Workout page renders Üst A
+        hero_headers = [
+            str(m.value).split("<h2>")[1].split("</h2>")[0]
+            for m in at.markdown
+            if "<h2>" in str(m.value)
+        ]
+        assert "Üst A" in hero_headers, f"Hero headers missing 'Üst A': {hero_headers}"
+
+
+def test_functional_workout_default_before_start_date_is_upper_a():
+    """Verify direct navigation to Workout page before start date defaults to kickoff workout (Üst A)."""
+    with tempfile.TemporaryDirectory() as td:
+        os.environ["FITNESS_DB_PATH"] = str(Path(td) / "test.db")
+        at = _run_app("workout")
+        assert not at.exception
+
+        # Must default to Üst A (kickoff of the program), not Üst B (generic Friday)
+        assert at.session_state["wsel"] == "Üst A"
+        info_texts = " ".join(str(i.value) for i in at.info)
+        assert "Program Öncesi Hazırlık" in info_texts
+        assert "Üst A" in info_texts
+        rendered_md = " ".join(str(m.value) for m in at.markdown)
+        assert "Üst A" in rendered_md
+

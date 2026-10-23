@@ -596,8 +596,11 @@ def program_adjustment():
     return (status, lines)
 
 
-def navigate(page):
+def navigate(page, workout_name=None):
     S["page"] = page
+    if workout_name:
+        S["wsel"] = workout_name
+        S["target_workout"] = workout_name
 
 
 def age_from(birth: str) -> int:
@@ -780,7 +783,7 @@ def page_home():
                     f"<div class='muted' style='font-size:12px;margin-top:6px'>{len(steps)} adım ({load['exercises']} güç + Eliptik & Kürek) · {load['sets']} güç seti + 25 dk yağ yakım kardiyo{extra_note}</div></div>",
                     unsafe_allow_html=True,
                 )
-                st.button("▶ Antrenmana git", type="primary", use_container_width=True, on_click=navigate, args=("workout",))
+                st.button("▶ Antrenmana git", type="primary", use_container_width=True, on_click=navigate, args=("workout", day["name"]), key="home_goto_workout")
             elif has_cal_pad:
                 t_str = f" · Saat {cal_today['start_time']}" if cal_today.get("start_time") else ""
                 l_str = f" @ {cal_today['location']}" if cal_today.get("location") else ""
@@ -1200,7 +1203,7 @@ def page_plan():
         if sel_date == TODAY:
             st.markdown("<div style='height:8px'></div>", unsafe_allow_html=True)
             c = st.columns([1, 1, 1])[0]
-            c.button("▶ Antrenmana git", type="primary", use_container_width=True, on_click=navigate, args=("workout",))
+            c.button("▶ Antrenmana git", type="primary", use_container_width=True, on_click=navigate, args=("workout", day["name"]), key=f"plan_goto_dual_{sel_iso}")
     elif day["exercises"]:
         load = P.day_load(day, extra)
         steps = P.workout_steps(day, extra)
@@ -1232,10 +1235,9 @@ def page_plan():
         )
         boxes = "".join(_plan_step_box(i, e, color) for i, e in enumerate(steps, 1))
         st.markdown(f"<div class='exgrid'>{boxes}</div>", unsafe_allow_html=True)
-        if sel_date == TODAY or sel_date == START_DATE:
-            st.markdown("<div style='height:8px'></div>", unsafe_allow_html=True)
-            c = st.columns([1, 1, 1])[0]
-            c.button("▶ Antrenmana git", type="primary", use_container_width=True, on_click=navigate, args=("workout",))
+        st.markdown("<div style='height:8px'></div>", unsafe_allow_html=True)
+        c = st.columns([1, 1, 1])[0]
+        c.button("▶ Antrenmana git", type="primary", use_container_width=True, on_click=navigate, args=("workout", day["name"]), key=f"plan_goto_{sel_iso}")
     elif has_cal_padel:
         # PADEL DAY FROM GOOGLE CALENDAR
         t_str = f" · Saat {cal_sel['start_time']}" if cal_sel.get("start_time") else ""
@@ -1446,8 +1448,22 @@ def _workout_step_card(
 def page_workout():
     training = P.TRAINING_DAYS
     names = [d["name"] for d in training]
-    today = P.dynamic_day_for_date(TODAY, calendar_padel_events(), START_DATE)
-    default = today["name"] if today.get("exercises") else names[0]
+
+    target = S.pop("target_workout", None)
+    if target and target in names:
+        S["wsel"] = target
+
+    if TODAY < START_DATE:
+        kickoff = P.dynamic_day_for_date(START_DATE, calendar_padel_events(), START_DATE)
+        default = kickoff["name"] if kickoff.get("exercises") else names[0]
+        today = kickoff
+    else:
+        today = P.dynamic_day_for_date(TODAY, calendar_padel_events(), START_DATE)
+        default = today["name"] if today.get("exercises") else names[0]
+
+    if S.get("wsel") not in names:
+        S["wsel"] = default
+
     done_iso = TODAY.strftime("%Y-%m-%d")
     pad_today = done_iso in padel_dates_all()
     cal_today = calendar_sync.padel_event_for_date(done_iso, calendar_padel_events())
@@ -1457,7 +1473,11 @@ def page_workout():
         unsafe_allow_html=True,
     )
 
-    if cal_today:
+    if TODAY < START_DATE:
+        days_left = (START_DATE - TODAY).days
+        start_fmt = f"{START_DATE.day} {MON[START_DATE.month-1]} {DOW_LONG[START_DATE.weekday()]}"
+        st.info(f"🗓️ **Program Öncesi Hazırlık:** 12 haftalık resmi programın **{start_fmt}** günü başlıyor ({days_left} gün kaldı). İlk antrenman **Üst A** olarak planlandı. Aşağıdan 1. gün antrenmanını inceleyebilir veya erkenden başlayabilirsin.")
+    elif cal_today:
         t_str = f" (Saat {cal_today['start_time']})" if cal_today.get("start_time") else ""
         l_str = f" @ {cal_today['location']}" if cal_today.get("location") else ""
         st.info(f"🎾 **Google Takvim**: Bugün **{cal_today['summary']}**{t_str}{l_str} planlanmış. Günlük program Padel odağında uyarlandı!")
@@ -1470,7 +1490,7 @@ def page_workout():
         st.info(f"Bugün **{today['name']}** — {today.get('note','')}. İstersen aşağıdan bir antrenman seç ve çalış.")
     col_wsel, col_pad, col_pset = st.columns([2.5, 1.1, 0.4], gap="small")
     with col_wsel:
-        choice = st.segmented_control("Antrenman", names, default=default, key="wsel", label_visibility="collapsed") or default
+        choice = st.segmented_control("Antrenman", names, key="wsel", label_visibility="collapsed") or S["wsel"]
     with col_pad:
         if pad_today:
             if st.button("🎾 Padel ✓ (↺)", key="w_pad_btn", use_container_width=True, help="Bugünkü padel kaydını geri al"):
