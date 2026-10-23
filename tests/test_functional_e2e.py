@@ -252,13 +252,13 @@ def test_functional_workout_steps_compact_single_line_and_heatmap_fluid():
 
 
 def test_functional_plan_page_starts_from_october_25_baseline():
-    """Verify Plan page displays from 25 October baseline and enables week navigation."""
+    """Verify Plan page displays Monday-to-Sunday weeks, Sunday 25 Oct has workout, and enables week navigation."""
     with tempfile.TemporaryDirectory() as td:
         os.environ["FITNESS_DB_PATH"] = str(Path(td) / "test.db")
         at = _run_app("plan", body={"start_date": "2026-10-25", "theme": "dark"})
         assert not at.exception
 
-        # 1. Header shows 25 Eki - 31 Eki
+        # 1. Header shows week starting on Monday (19 Eki) and ending on Sunday (25 Eki)
         header_markdowns = [str(m.value) for m in at.markdown if "25 Eki" in str(m.value)]
         assert len(header_markdowns) > 0
         assert any("Hafta 1 / 12" in m or "Hafta 1/12" in m for m in header_markdowns)
@@ -268,23 +268,32 @@ def test_functional_plan_page_starts_from_october_25_baseline():
         next_btn = next((b for b in at.button if b.key == "plan_wk_next"), None)
         assert prev_btn is not None
         assert next_btn is not None
-        assert prev_btn.disabled is True  # Cannot go prior to 25 October
+        assert prev_btn.disabled is True  # Cannot go prior to week 1
 
-        # 3. 7 day buttons start on 25 (Paz)
+        # 3. 7 day buttons start on Pazartesi (19) and end on Pazar (25)
         pd_btns = [b for b in at.button if b.key and b.key.startswith("pd_")]
         assert len(pd_btns) == 7
-        assert pd_btns[0].label == "25"
-        assert pd_btns[1].label == "26"
+        assert pd_btns[0].label == "19"  # Pazartesi
+        assert pd_btns[6].label == "25"  # Pazar (First day of program)
 
-        # 4. Next week navigation works
+        # 4. Sunday 25 October renders the kickoff strength workout (Üst A)
+        rendered_text = " ".join(str(m.value) for m in at.markdown)
+        assert "Üst A" in rendered_text
+        assert "Resmi Program Başlangıcı" in rendered_text
+        assert "Başlangıç Tartımı" in rendered_text
+
+        # 5. Next week navigation works: goes to 26 Eki (Pzt) – 1 Kas (Paz)
         next_btn.click().run()
         assert not at.exception
         h2_markdowns = [str(m.value) for m in at.markdown if "1 Kas" in str(m.value)]
         assert len(h2_markdowns) > 0
+        pd_btns_w2 = [b for b in at.button if b.key and b.key.startswith("pd_")]
+        assert pd_btns_w2[0].label == "26"  # Pazartesi
+        assert pd_btns_w2[6].label == "1"   # Pazar
 
 
 def test_functional_dynamic_calendar_padel_and_dual_sessions():
-    """Verify Google Calendar events on Tuesday 27 and Wednesday 28 dynamically adjust plan and show dual session on Wednesday."""
+    """Verify Google Calendar events dynamically adjust schedule and support both single and dual sessions."""
     from unittest.mock import patch
     import datetime as dt
     from app import program_week_grid
@@ -314,12 +323,12 @@ def test_functional_dynamic_calendar_padel_and_dual_sessions():
 
     with patch("lib.calendar_sync.fetch_padel_events", return_value=mock_events), \
          patch("lib.calendar_sync.get_calendar_url", return_value=unique_url):
-        # 1. Verify program_week_grid handles Tuesday (Padel) and Wednesday (Dual: Alt A + Padel)
+        # 1. Verify program_week_grid dynamically schedules Alt A on Monday and Padel on Tue & Wed
         week_mon = dt.date(2026, 10, 26)  # Monday
         grid = program_week_grid(week_mon)
 
-        # Mon 26: Upper A lift
-        assert grid[0]["name"] == "Üst A"
+        # Mon 26: Alt A lift (smart placement before padel days)
+        assert grid[0]["name"] == "Alt A"
         assert grid[0]["kind"] == "lift"
 
         # Tue 27: Padel from calendar
@@ -328,33 +337,33 @@ def test_functional_dynamic_calendar_padel_and_dual_sessions():
         assert grid[1]["planned"] is True
         assert grid[1]["cal_ev"]["summary"] == "Padel Training"
 
-        # Wed 28: Dual session (Alt A + Padel)
-        assert grid[2]["name"] == "Alt A + 🎾"
-        assert grid[2]["kind"] == "dual"
+        # Wed 28: Padel from calendar
+        assert grid[2]["name"] == "Padel"
+        assert grid[2]["kind"] == "padel"
         assert grid[2]["planned"] is True
         assert grid[2]["cal_ev"]["summary"] == "✅ Padel with Isa & Robbert"
 
-        # Thu 29: No calendar event scheduled
+        # Thu 29: Rest after double padel
+        assert grid[3]["name"] == "Dinlenme"
         assert grid[3]["cal_ev"] is None
 
-        # 2. Verify Plan page renders both Padel and Workout on Wednesday 28
+        # 2. Verify Plan page renders Padel on Wednesday 28 (day index 2 in 26 Oct–1 Nov week)
         with tempfile.TemporaryDirectory() as td:
             os.environ["FITNESS_DB_PATH"] = str(Path(td) / "test.db")
-            # Select day index 3 (which corresponds to 28 Oct in 25 Oct base week: 0=25, 1=26, 2=27, 3=28)
             at = _run_app(
                 "plan",
                 body={"start_date": "2026-10-25", "theme": "dark"},
                 settings={"gcal_url": unique_url},
-                plan_day_idx=3,
+                plan_week_idx=1,
+                plan_day_idx=2,
             )
             assert not at.exception
             rendered_text = " ".join(str(m.value) for m in at.markdown)
 
-            # Wednesday 28 must show BOTH Padel with Isa & Robbert AND Alt A
+            # Wednesday 28 shows Padel with Isa & Robbert
             assert "Padel with Isa & Robbert" in rendered_text
-            assert "Alt A" in rendered_text
-            assert "Çift Seans" in rendered_text
-            assert "Güç Antrenmanı Adımları" in rendered_text
+            assert "TV Meerhoven" in rendered_text
+            assert "Google Takvim" in rendered_text
 
 
 

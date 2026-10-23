@@ -9,52 +9,76 @@ from lib import data
 FOCUS_COLOR = {"upper": "var(--blue)", "lower": "var(--purple)", "cardio": "var(--green)",
                "full": "var(--teal)", "rest": "var(--faint)"}
 
-# weekday 0=Mon … 6=Sun
+import datetime as dt
+
+WORKOUT_UPPER_A = {
+    "key": "upperA", "name": "Üst A", "focus": "upper", "tag": "Üst · A", "note": "Göğüs, sırt, omuz, kol",
+    "exercises": [
+        {"id": "0289", "sets": 3, "reps": "8", "tip": "Göğüs; kontrollü indir, patlayarak it."},
+        {"id": "0314", "sets": 3, "reps": "10", "tip": "Üst göğüs; bench ~30°."},
+        {"id": "0293", "sets": 3, "reps": "10", "tip": "Sırt; dirseği gövdeye yakın çek, sık."},
+        {"id": "9698", "sets": 3, "reps": "10", "tip": "Sırt; göğüs destekli, lat'ı sık."},
+        {"id": "0334", "sets": 3, "reps": "12", "tip": "Omuz yanı; hafif ağırlık, salınımsız."},
+        {"id": "0294", "sets": 3, "reps": "10", "tip": "Biceps; dirsek sabit."},
+        {"id": "3449", "sets": 3, "reps": "12", "tip": "Yan karın; her yöne kontrollü rotasyon."},
+    ]
+}
+
+WORKOUT_LOWER_A = {
+    "key": "lowerA", "name": "Alt A", "focus": "lower", "tag": "Alt · A", "note": "Bacak, kalça, karın",
+    "exercises": [
+        {"id": "1760", "sets": 3, "reps": "10", "tip": "Ön bacak; göğüste dambıl, derine çök."},
+        {"id": "1459", "sets": 3, "reps": "10", "tip": "Arka bacak/kalça; sırt düz, kalçayı geri it."},
+        {"id": "2290", "sets": 3, "reps": "10", "tip": "Tek bacak; arka ayak bench'te."},
+        {"id": "0417", "sets": 3, "reps": "12", "tip": "Baldır; tepede 1 sn dur, tam uzat."},
+        {"id": "1163", "sets": 3, "reps": "12", "tip": "Alt karın; bel yere yapışık."},
+        {"id": "4624", "sets": 3, "reps": "12", "tip": "Karın; nefes vererek sık."},
+    ]
+}
+
+WORKOUT_UPPER_B = {
+    "key": "upperB", "name": "Üst B", "focus": "upper", "tag": "Üst · B", "note": "Omuz, sırt, göğüs, kol",
+    "exercises": [
+        {"id": "0405", "sets": 3, "reps": "8", "tip": "Omuz; bench dik, çekirdek sıkı."},
+        {"id": "0293", "sets": 3, "reps": "10", "tip": "Sırt; kürek kemiklerini birleştir."},
+        {"id": "2982", "sets": 3, "reps": "10", "tip": "Göğüs; yerde, dirsek 45°."},
+        {"id": "0378", "sets": 3, "reps": "12", "tip": "Arka omuz; gövde öne eğik."},
+        {"id": "0313", "sets": 3, "reps": "10", "tip": "Ön kol/biceps; nötr tutuş."},
+        {"id": "0430", "sets": 3, "reps": "12", "tip": "Triceps; tam aç."},
+        {"id": "0407", "sets": 3, "reps": "12", "tip": "Yan karın; tek dambıl, kontrollü yana eğil."},
+    ]
+}
+
+WORKOUT_CARDIO = {
+    "key": "cardio", "name": "Kardiyo", "focus": "cardio", "tag": "Kardiyo",
+    "note": "Tam-vücut kondisyon günü — kürek öncelikli", "exercises": [],
+    "cardio": [
+        {"name": "Kürek (rower)", "type": "Kürek", "minutes": 20, "kcal": 200, "role": "Kondisyon",
+         "tip": "20 dk interval (1 dk güçlü / 1 dk kolay) · tam vücut kondisyon."},
+        {"name": "Eliptik", "type": "Eliptik", "minutes": 15, "kcal": 150, "role": "Toparlanma",
+         "tip": "15 dk kolay-orta · eklem dostu toparlanma."},
+        {"name": "Bisiklet", "type": "Bisiklet", "minutes": 25, "kcal": 220, "role": "Dayanıklılık",
+         "tip": "25 dk sabit tempo · alt vücut dayanıklılık."},
+    ]
+}
+
+WORKOUT_REST = {
+    "key": "rest", "name": "Dinlenme", "focus": "rest", "tag": "", "note": "Toparlanma", "exercises": []
+}
+
+WORKOUT_PADEL = {
+    "key": "padel", "name": "Padel", "focus": "cardio", "tag": "Padel", "note": "Ders / maç · kardiyo", "exercises": []
+}
+
+# weekday 0=Mon … 6=Sun default template
 DAYS = [
-    {"wd": 0, "key": "upperA", "name": "Üst A", "focus": "upper", "tag": "Üst · A", "note": "Göğüs, sırt, omuz, kol",
-     "exercises": [
-         {"id": "0289", "sets": 3, "reps": "8", "tip": "Göğüs; kontrollü indir, patlayarak it."},
-         {"id": "0314", "sets": 3, "reps": "10", "tip": "Üst göğüs; bench ~30°."},
-         {"id": "0293", "sets": 3, "reps": "10", "tip": "Sırt; dirseği gövdeye yakın çek, sık."},
-         {"id": "9698", "sets": 3, "reps": "10", "tip": "Sırt; göğüs destekli, lat'ı sık."},
-         {"id": "0334", "sets": 3, "reps": "12", "tip": "Omuz yanı; hafif ağırlık, salınımsız."},
-         {"id": "0294", "sets": 3, "reps": "10", "tip": "Biceps; dirsek sabit."},
-         {"id": "3449", "sets": 3, "reps": "12", "tip": "Yan karın; her yöne kontrollü rotasyon."},
-     ]},
-    {"wd": 1, "key": "padelTue", "name": "Padel", "focus": "cardio", "tag": "Padel",
-     "note": "Ders 20:00 + maç · kardiyo", "exercises": []},
-    {"wd": 2, "key": "lowerA", "name": "Alt A", "focus": "lower", "tag": "Alt · A", "note": "Bacak, kalça, karın",
-     "exercises": [
-         {"id": "1760", "sets": 3, "reps": "10", "tip": "Ön bacak; göğüste dambıl, derine çök."},
-         {"id": "1459", "sets": 3, "reps": "10", "tip": "Arka bacak/kalça; sırt düz, kalçayı geri it."},
-         {"id": "2290", "sets": 3, "reps": "10", "tip": "Tek bacak; arka ayak bench'te."},
-         {"id": "0417", "sets": 3, "reps": "12", "tip": "Baldır; tepede 1 sn dur, tam uzat."},
-         {"id": "1163", "sets": 3, "reps": "12", "tip": "Alt karın; bel yere yapışık."},
-         {"id": "4624", "sets": 3, "reps": "12", "tip": "Karın; nefes vererek sık."},
-     ]},
-    {"wd": 3, "key": "padelThu", "name": "Padel", "focus": "cardio", "tag": "Padel",
-     "note": "Olursa · kardiyo", "exercises": []},
-    {"wd": 4, "key": "upperB", "name": "Üst B", "focus": "upper", "tag": "Üst · B", "note": "Omuz, sırt, göğüs, kol",
-     "exercises": [
-         {"id": "0405", "sets": 3, "reps": "8", "tip": "Omuz; bench dik, çekirdek sıkı."},
-         {"id": "0293", "sets": 3, "reps": "10", "tip": "Sırt; kürek kemiklerini birleştir."},
-         {"id": "2982", "sets": 3, "reps": "10", "tip": "Göğüs; yerde, dirsek 45°."},
-         {"id": "0378", "sets": 3, "reps": "12", "tip": "Arka omuz; gövde öne eğik."},
-         {"id": "0313", "sets": 3, "reps": "10", "tip": "Ön kol/biceps; nötr tutuş."},
-         {"id": "0430", "sets": 3, "reps": "12", "tip": "Triceps; tam aç."},
-         {"id": "0407", "sets": 3, "reps": "12", "tip": "Yan karın; tek dambıl, kontrollü yana eğil."},
-     ]},
-    {"wd": 5, "key": "cardio", "name": "Kardiyo", "focus": "cardio", "tag": "Kardiyo",
-     "note": "Tam-vücut kondisyon günü — kürek öncelikli", "exercises": [],
-     "cardio": [
-         {"name": "Kürek (rower)", "type": "Kürek", "minutes": 20, "kcal": 200, "role": "Kondisyon",
-          "tip": "20 dk interval (1 dk güçlü / 1 dk kolay) · tam vücut kondisyon."},
-         {"name": "Eliptik", "type": "Eliptik", "minutes": 15, "kcal": 150, "role": "Toparlanma",
-          "tip": "15 dk kolay-orta · eklem dostu toparlanma."},
-         {"name": "Bisiklet", "type": "Bisiklet", "minutes": 25, "kcal": 220, "role": "Dayanıklılık",
-          "tip": "25 dk sabit tempo · alt vücut dayanıklılık."},
-     ]},
-    {"wd": 6, "key": "rest", "name": "Dinlenme", "focus": "rest", "tag": "", "note": "Toparlanma", "exercises": []},
+    {**WORKOUT_UPPER_A, "wd": 0},
+    {**WORKOUT_PADEL, "wd": 1, "key": "padelTue", "note": "Ders 20:00 + maç · kardiyo"},
+    {**WORKOUT_LOWER_A, "wd": 2},
+    {**WORKOUT_PADEL, "wd": 3, "key": "padelThu", "note": "Olursa · kardiyo"},
+    {**WORKOUT_UPPER_B, "wd": 4},
+    {**WORKOUT_CARDIO, "wd": 5},
+    {**WORKOUT_REST, "wd": 6},
 ]
 
 # icon per cardio type (matches Cronometer's cleaned labels, so Stats auto-matches these sessions)
@@ -125,6 +149,89 @@ SESSIONS_PER_WEEK = len([d for d in DAYS if d["focus"] in ("upper", "lower", "fu
 
 def day_for(weekday: int) -> dict:
     return DAYS[weekday % 7]
+
+
+def dynamic_day_for_date(target_date: dt.date, cal_events: list[dict] | None = None, start_date: dt.date | None = None) -> dict:
+    """Intelligently assign the workout / rest / padel session for a specific date,
+    adapting to Google Calendar padel sessions, start date kickoff, and muscle recovery.
+    """
+    iso = target_date.strftime("%Y-%m-%d")
+    s_date = start_date or dt.date(2026, 10, 25)
+    s_iso = s_date.strftime("%Y-%m-%d")
+    dow = target_date.weekday()
+
+    # 1. Official Start Date Kickoff: If starting on Sunday (e.g. 2026-10-25), provide Upper A
+    if iso == s_iso and dow == 6:
+        d = dict(WORKOUT_UPPER_A)
+        d["wd"] = 6
+        d["tag"] = "🏁 Başlangıç · Üst A"
+        d["note"] = "1. Gün Resmi Başlangıç · Göğüs, sırt, omuz, kol"
+        return d
+
+    # 2. Check Google Calendar for Padel on target date
+    cal_ev = None
+    if cal_events:
+        for ev in cal_events:
+            if ev.get("date") == iso and ev.get("is_padel", True):
+                cal_ev = ev
+                break
+
+    # 3. Dynamic adjustment for week of 26 Oct – 1 Nov (when start was Sunday 25 Oct):
+    # Sunday was Upper A.
+    # Monday 26 Oct: Alt A (Lower body, fresh legs before padel).
+    # Tuesday 27 Oct: Padel Training (20:00) + Wegovy 1st injection.
+    # Wednesday 28 Oct: Padel with Isa & Robbert (19:00).
+    # Thursday 29 Oct: Aktif Dinlenme (recovery after double padel).
+    # Friday 30 Oct: Upper B.
+    # Saturday 31 Oct: Cardio.
+    # Sunday 1 Nov: Rest.
+    if s_date == dt.date(2026, 10, 25):
+        if iso == "2026-10-26":
+            d = dict(WORKOUT_LOWER_A)
+            d["wd"] = 0
+            d["note"] = "Bacak, kalça, karın · Salı padeli öncesi taze bacaklar"
+            return d
+        elif iso == "2026-10-27":
+            d = dict(WORKOUT_PADEL)
+            d["wd"] = 1
+            d["note"] = "Padel Training 20:00 · 💉 1. Doz Wegovy"
+            return d
+        elif iso == "2026-10-28":
+            d = dict(WORKOUT_PADEL)
+            d["wd"] = 2
+            d["note"] = "✅ Padel with Isa & Robbert (19:00–20:30)"
+            return d
+        elif iso == "2026-10-29":
+            d = dict(WORKOUT_REST)
+            d["wd"] = 3
+            d["note"] = "Aktif Toparlanma · Çift padel sonrası dinlenme"
+            return d
+        elif iso == "2026-10-30":
+            d = dict(WORKOUT_UPPER_B)
+            d["wd"] = 4
+            return d
+        elif iso == "2026-10-31":
+            d = dict(WORKOUT_CARDIO)
+            d["wd"] = 5
+            return d
+        elif iso == "2026-11-01":
+            d = dict(WORKOUT_REST)
+            d["wd"] = 6
+            return d
+
+    # General dynamic rule for other weeks:
+    if cal_ev:
+        d = dict(WORKOUT_PADEL)
+        d["wd"] = dow
+        t_str = f" ({cal_ev['start_time']})" if cal_ev.get("start_time") else ""
+        d["note"] = f"{cal_ev.get('summary', 'Padel')}{t_str} · Google Takvim"
+        return d
+
+    # Fallback to standard template for that weekday
+    d = dict(day_for(dow))
+    d["wd"] = dow
+    return d
+
 
 
 def exercise_detail(entry: dict, extra_sets: int = 0) -> dict:

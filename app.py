@@ -382,7 +382,7 @@ def program_week_grid(week_start: dt.date):
         d = week_start + dt.timedelta(days=i)
         iso = d.strftime("%Y-%m-%d")
         dow_idx = d.weekday()
-        day = P.day_for(dow_idx)
+        day = P.dynamic_day_for_date(d, cal_events, START_DATE)
         is_pre_start = iso < START_ISO
         has_str = (iso in strv) and not is_pre_start
         has_pad = (iso in padv) and not is_pre_start
@@ -392,12 +392,7 @@ def program_week_grid(week_start: dt.date):
         has_cal_pad = (cal_ev is not None) and not is_pre_start
 
         is_plan_lift = (day["focus"] in ("upper", "lower", "full")) and not is_pre_start
-        # If calendar has padel sessions, prioritize actual calendar feed; else fallback to static template
-        if has_calendar:
-            is_plan_pad = has_cal_pad
-        else:
-            is_plan_pad = ("padel" in day["key"].lower()) and not is_pre_start
-
+        is_plan_pad = (day["focus"] == "cardio" and "padel" in day.get("key", "").lower()) or has_cal_pad
         is_plan_crd = bool(P.day_cardio(day)) and not is_pre_start and not is_plan_pad
 
         # Dynamic priority: if actual workouts happened or planned dual sessions
@@ -721,7 +716,7 @@ def page_home():
             )
             st.button("🗓 25 Ekim Planını İncele", type="primary", use_container_width=True, on_click=navigate, args=("plan",))
         else:
-            day = P.day_for(TODAY.weekday())
+            day = P.dynamic_day_for_date(TODAY, calendar_padel_events(), START_DATE)
             color = P.FOCUS_COLOR[day["focus"]]
             phase, pextra = current_phase()
             ws = wegovy_status()
@@ -947,12 +942,14 @@ def _cardio_box(c):
 def page_plan():
     pp = program_progress()
     # Program starts on START_DATE (e.g. 2026-10-25 Sunday).
-    # If today < START_DATE, base week is Week 1 (starting at START_DATE).
-    # If today >= START_DATE, base week is the elapsed weeks from START_DATE.
+    # All weeks MUST start on Monday (Pazartesi) and end on Sunday (Pazar).
+    start_mon = START_DATE - dt.timedelta(days=START_DATE.weekday())
+
+    today_mon = TODAY - dt.timedelta(days=TODAY.weekday())
     if TODAY < START_DATE:
         cur_prog_week = 0
     else:
-        cur_prog_week = min(PROGRAM_WEEKS - 1, max(0, (TODAY - START_DATE).days // 7))
+        cur_prog_week = min(PROGRAM_WEEKS - 1, max(0, (today_mon - start_mon).days // 7))
 
     # Week index can be navigated by user (0..PROGRAM_WEEKS-1)
     week_idx = S.get("plan_week_idx")
@@ -960,7 +957,7 @@ def page_plan():
         week_idx = cur_prog_week
     week_idx = max(0, min(PROGRAM_WEEKS - 1, int(week_idx)))
 
-    cur_week_start = START_DATE + dt.timedelta(weeks=week_idx)
+    cur_week_start = start_mon + dt.timedelta(weeks=week_idx)
     cur_week_end = cur_week_start + dt.timedelta(days=6)
 
     ph = P.phase_for(week_idx + 1)
@@ -1008,13 +1005,6 @@ def page_plan():
     )
 
     # Determine default day index (0..6)
-    if TODAY < START_DATE:
-        default_day_idx = 0  # 25 Ekim Pazar
-    elif cur_week_start <= TODAY <= cur_week_end:
-        default_day_idx = (TODAY - cur_week_start).days
-    else:
-        default_day_idx = 0
-
     if "plan_day_idx" not in S:
         if "plan_day" in S:
             try:
@@ -1026,6 +1016,12 @@ def page_plan():
             except Exception:
                 pass
         if "plan_day_idx" not in S:
+            if TODAY < START_DATE and week_idx == 0:
+                default_day_idx = (START_DATE - cur_week_start).days  # 6 (Sunday 25 Oct)
+            elif cur_week_start <= TODAY <= cur_week_end:
+                default_day_idx = (TODAY - cur_week_start).days
+            else:
+                default_day_idx = 0
             S["plan_day_idx"] = default_day_idx
 
     sel_idx = max(0, min(6, int(S["plan_day_idx"])))
@@ -1039,7 +1035,7 @@ def page_plan():
         d = cur_week_start + dt.timedelta(days=i)
         iso = d.strftime("%Y-%m-%d")
         dow_idx = d.weekday()
-        day = P.day_for(dow_idx)
+        day = P.dynamic_day_for_date(d, cal_events, START_DATE)
         color = P.FOCUS_COLOR[day["focus"]]
         cal_ev = calendar_sync.padel_event_for_date(iso, cal_events)
         has_cal_pad = cal_ev is not None
@@ -1048,7 +1044,7 @@ def page_plan():
             dot = "var(--green)"
         elif has_cal_pad:
             dot = "var(--teal)"
-        elif day["focus"] != "rest":
+        elif day["focus"] != "rest" and iso >= START_ISO:
             dot = color
         else:
             dot = "var(--line)"
@@ -1073,7 +1069,7 @@ def page_plan():
     sel_date = cur_week_start + dt.timedelta(days=sel_idx)
     sel_iso = sel_date.strftime("%Y-%m-%d")
     sel_dow = sel_date.weekday()
-    day = P.day_for(sel_dow)
+    day = P.dynamic_day_for_date(sel_date, cal_events, START_DATE)
     color = P.FOCUS_COLOR[day["focus"]]
     is_inj_day = (sel_date >= WEGOVY_START_DATE and sel_dow == ws["inj_weekday"])
     is_first_inj = (sel_date == WEGOVY_START_DATE)
@@ -1173,20 +1169,32 @@ def page_plan():
         chips = "".join(f"<span class='chip'>{g}</span>" for g in P.day_groups(day))
         chips += "<span class='chip' style='color:var(--green)'>🏃 Eliptik 5+10 dk</span>"
         chips += "<span class='chip' style='color:var(--orange)'>🚣 Kürek 10 dk</span>"
+        if sel_date == START_DATE:
+            chips = "<span class='chip' style='color:var(--green)'>⚖️ Başlangıç Tartımı</span><span class='chip' style='color:var(--orange)'>🔥 Kalori & Makro Başlangıcı</span>" + chips
         if is_first_inj:
             chips += f"<span class='chip' style='color:var(--purple)'>💉 1. Doz Wegovy ({ws['dose_mg']:g} mg)</span>"
         elif is_inj_day:
             chips += f"<span class='chip' style='color:var(--purple)'>💉 Wegovy ({ws['dose_mg']:g} mg)</span>"
+
+        start_note = ""
+        if sel_date == START_DATE:
+            start_note = (
+                f"<div style='font-size:12px;color:var(--fg);margin-top:8px;padding:6px 10px;background:color-mix(in srgb,var(--green) 12%,transparent);border-radius:6px;border:1px solid color-mix(in srgb,var(--green) 25%,transparent)'>"
+                f"🏁 <b>Resmi Program Başlangıcı (1. Gün):</b> 12 haftalık antrenman ve kalori takip yolculuğu bugün başlıyor! Başlangıç kilonu tart ve kaydet, günlük kalori ve protein hedeflerine bugün başla. İlk Wegovy dozu ise <b>27 Ekim Salı</b> günü uygulanacak."
+                f"</div>"
+            )
+
         st.markdown(
             f"<div class='hero' style='background:radial-gradient(130% 90% at 100% 0%, color-mix(in srgb,{color} 28%,transparent), transparent 60%), linear-gradient(165deg, color-mix(in srgb,{color} 13%,var(--surface)), var(--surface) 80%);border:1px solid color-mix(in srgb,{color} 32%,var(--line))'>"
             f"<div class='kick' style='color:{color}'>● {day['tag']} · RPE {ph['rpe']}</div><h2>{day['name']}</h2>"
             f"<div class='chiprow'>{chips}</div>"
-            f"<div class='muted' style='font-size:13px;margin-top:8px'>{len(steps)} numaralı adım ({load['exercises']} güç + Eliptik ısınma + Kürek & Eliptik yağ yakım) · ~{load['minutes']+25} dk</div></div>",
+            f"<div class='muted' style='font-size:13px;margin-top:8px'>{len(steps)} numaralı adım ({load['exercises']} güç + Eliptik ısınma + Kürek & Eliptik yağ yakım) · ~{load['minutes']+25} dk</div>"
+            f"{start_note}</div>",
             unsafe_allow_html=True,
         )
         boxes = "".join(_plan_step_box(i, e, color) for i, e in enumerate(steps, 1))
         st.markdown(f"<div class='exgrid'>{boxes}</div>", unsafe_allow_html=True)
-        if sel_date == TODAY:
+        if sel_date == TODAY or sel_date == START_DATE:
             st.markdown("<div style='height:8px'></div>", unsafe_allow_html=True)
             c = st.columns([1, 1, 1])[0]
             c.button("▶ Antrenmana git", type="primary", use_container_width=True, on_click=navigate, args=("workout",))
@@ -1400,8 +1408,8 @@ def _workout_step_card(
 def page_workout():
     training = P.TRAINING_DAYS
     names = [d["name"] for d in training]
-    today = P.day_for(TODAY.weekday())
-    default = today["name"] if today in training else names[0]
+    today = P.dynamic_day_for_date(TODAY, calendar_padel_events(), START_DATE)
+    default = today["name"] if today.get("exercises") else names[0]
     done_iso = TODAY.strftime("%Y-%m-%d")
     pad_today = done_iso in padel_dates_all()
     cal_today = calendar_sync.padel_event_for_date(done_iso, calendar_padel_events())
