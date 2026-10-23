@@ -366,6 +366,9 @@ def hydrate_session(session_state, db_path: Path | str | None = None, secrets=No
         if isinstance(stored.get("wegovy"), dict):
             merged_weg = dict(session_state.get("wegovy", {}))
             merged_weg.update(stored["wegovy"])
+            if not merged_weg.get("logs") and merged_weg.get("inj_weekday") == 5:
+                merged_weg["inj_weekday"] = 1
+            merged_weg.setdefault("start_date", "2026-10-27")
             session_state["wegovy"] = merged_weg
         if isinstance(stored.get("settings"), dict):
             merged_set = dict(session_state.get("settings", {}))

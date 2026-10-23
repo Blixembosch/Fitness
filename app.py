@@ -23,7 +23,7 @@ S.setdefault("body", {"birth": "1992-03-12", "height": 178, "sex": "male", "acti
                       "start_date": "2026-10-25"})
 WEGOVY_DOSES = [0.25, 0.5, 1.0, 1.7, 2.4]
 WEGOVY_SITES = ["Sol karın", "Sağ karın", "Sol üst bacak", "Sağ üst bacak", "Sol üst kol", "Sağ üst kol"]
-S.setdefault("wegovy", {"dose_mg": 0.25, "inj_weekday": 5, "logs": []})  # default Saturday (5)
+S.setdefault("wegovy", {"dose_mg": 0.25, "inj_weekday": 1, "start_date": "2026-10-27", "logs": []})  # default Tuesday (1)
 
 PROTEIN_PER_KG = 1.8
 FIBER_TARGET = 28           # g/day — key for GI comfort on GLP-1 (Wegovy)
@@ -57,6 +57,13 @@ except Exception:
     START_DATE = dt.date(2026, 10, 25)
 START_ISO = START_DATE.strftime("%Y-%m-%d")
 
+_weg_start_str = S.get("wegovy", {}).get("start_date") or "2026-10-27"
+try:
+    WEGOVY_START_DATE = dt.date.fromisoformat(str(_weg_start_str))
+except Exception:
+    WEGOVY_START_DATE = dt.date(2026, 10, 27)
+WEGOVY_START_ISO = WEGOVY_START_DATE.strftime("%Y-%m-%d")
+
 TODAY = dt.date.today()
 TODAY_ISO = TODAY.strftime("%Y-%m-%d")
 NOW = dt.datetime.now()
@@ -84,7 +91,13 @@ def wegovy_status(today: dt.date = TODAY) -> dict:
     """Compute Wegovy injection schedule, site rotation, and 48-hour post-injection RPE/GI window."""
     w = S.get("wegovy") or {}
     dose = float(w.get("dose_mg") or 0.25)
-    inj_wd = int(w.get("inj_weekday", 5)) % 7
+    inj_wd = int(w.get("inj_weekday", 1)) % 7  # default Tuesday (1)
+    _w_start = w.get("start_date") or "2026-10-27"
+    try:
+        weg_start = dt.date.fromisoformat(str(_w_start))
+    except Exception:
+        weg_start = dt.date(2026, 10, 27)
+
     logs = sorted(w.get("logs") or [], key=lambda x: x.get("date", ""))
     last_log = logs[-1] if logs else None
     last_date = dt.date.fromisoformat(last_log["date"]) if (last_log and last_log.get("date")) else None
@@ -96,24 +109,36 @@ def wegovy_status(today: dt.date = TODAY) -> dict:
     else:
         next_site = WEGOVY_SITES[0]
 
-    days_until = (inj_wd - today.weekday()) % 7
-    logged_today = days_since == 0
-    logged_this_week = days_since is not None and 0 <= days_since <= 6 and days_until != 0
-    in_48h = (days_since in (0, 1)) if days_since is not None else (days_until == 0 or ((today.weekday() - inj_wd) % 7 == 1))
-
-    if logged_today:
-        sched_lbl = "Bugün vuruldu ✓"
-    elif days_until == 0:
-        sched_lbl = "Bugün enjeksiyon günü"
-    elif days_until == 1:
-        sched_lbl = f"Yarın · {DOW_LONG[inj_wd]}"
+    # Pre-start window: If no injection has been logged yet and today < weg_start
+    if not logs and today < weg_start:
+        days_until = (weg_start - today).days
+        logged_today = False
+        logged_this_week = False
+        in_48h = False
+        if days_until == 1:
+            sched_lbl = f"Yarın · İlk Doz ({weg_start.day} {MON[weg_start.month-1]} {DOW_LONG[weg_start.weekday()]})"
+        else:
+            sched_lbl = f"{days_until} gün sonra · İlk Doz ({weg_start.day} {MON[weg_start.month-1]} {DOW_LONG[weg_start.weekday()]})"
     else:
-        sched_lbl = f"{days_until} gün sonra · {DOW_LONG[inj_wd]}"
+        days_until = (inj_wd - today.weekday()) % 7
+        logged_today = days_since == 0
+        logged_this_week = days_since is not None and 0 <= days_since <= 6 and days_until != 0
+        in_48h = (days_since in (0, 1)) if days_since is not None else (days_until == 0 or ((today.weekday() - inj_wd) % 7 == 1))
+
+        if logged_today:
+            sched_lbl = "Bugün vuruldu ✓"
+        elif days_until == 0:
+            sched_lbl = "Bugün 1. Doz enjeksiyon günü (0.25 mg)" if not logs else "Bugün enjeksiyon günü"
+        elif days_until == 1:
+            sched_lbl = f"Yarın · {DOW_LONG[inj_wd]}"
+        else:
+            sched_lbl = f"{days_until} gün sonra · {DOW_LONG[inj_wd]}"
 
     return {
         "dose_mg": dose,
         "inj_weekday": inj_wd,
         "inj_day_name": DOW_LONG[inj_wd],
+        "start_date": weg_start,
         "last_log": last_log,
         "days_since": days_since,
         "days_until": days_until,
@@ -680,8 +705,8 @@ def page_home():
                 f"<div class='kick' style='color:var(--blue)'>● Hazırlık Dönemi · Başlangıç: {start_fmt} {DOW_LONG[START_DATE.weekday()]}</div>"
                 f"<h2>Program Öncesi Hazırlık</h2>"
                 f"<div class='muted' style='font-size:12.5px;margin-top:6px'>"
-                f"Resmi 12 haftalık programın <b>{start_fmt} {DOW_LONG[START_DATE.weekday()]}</b> günü başlıyor ({days_left} gün kaldı). "
-                f"İğnenin eve ulaşmasıyla ilk Wegovy dozu uygulanacak; bu tarihten önce planlanmış bir antrenman bulunmuyor.</div></div>",
+                f"Resmi antrenman ve kalori takip programın <b>{start_fmt} {DOW_LONG[START_DATE.weekday()]}</b> günü başlıyor ({days_left} gün kaldı). "
+                f"İlk Wegovy enjeksiyonu ise <b>27 Ekim Salı</b> günü uygulanacak; bu tarihten önce planlanmış bir antrenman bulunmuyor.</div></div>",
                 unsafe_allow_html=True,
             )
             st.button("🗓 25 Ekim Planını İncele", type="primary", use_container_width=True, on_click=navigate, args=("plan",))
@@ -977,6 +1002,7 @@ def page_plan():
     sel_idx = max(0, min(6, int(S["plan_day_idx"])))
     done = strength_dates_all()
     pad = padel_dates_all()
+    ws = wegovy_status()
 
     cols = st.columns(7)
     for i, col in enumerate(cols):
@@ -986,10 +1012,11 @@ def page_plan():
         day = P.day_for(dow_idx)
         color = P.FOCUS_COLOR[day["focus"]]
         dot = "var(--green)" if (iso in done or iso in pad) else (color if day["focus"] != "rest" else "var(--line)")
+        inj_dot = "<span title='Wegovy Enjeksiyonu' style='display:inline-block;width:5px;height:5px;border-radius:50%;background:var(--purple);margin-inline-start:3px;vertical-align:middle'></span>" if (d >= WEGOVY_START_DATE and dow_idx == ws["inj_weekday"]) else ""
         with col:
             st.markdown(
                 f"<div style='text-align:center;font-size:11px;color:var(--muted);font-weight:700'>{DOW[dow_idx]}"
-                f"<span style='display:inline-block;width:6px;height:6px;border-radius:50%;background:{dot};margin-inline-start:4px;vertical-align:middle'></span></div>",
+                f"<span style='display:inline-block;width:6px;height:6px;border-radius:50%;background:{dot};margin-inline-start:4px;vertical-align:middle'></span>{inj_dot}</div>",
                 unsafe_allow_html=True,
             )
             st.button(
@@ -1005,6 +1032,8 @@ def page_plan():
     sel_dow = sel_date.weekday()
     day = P.day_for(sel_dow)
     color = P.FOCUS_COLOR[day["focus"]]
+    is_inj_day = (sel_date >= WEGOVY_START_DATE and sel_dow == ws["inj_weekday"])
+    is_first_inj = (sel_date == WEGOVY_START_DATE)
 
     title = "Bugün" if sel_date == TODAY else f"{DOW_LONG[sel_dow]} · {sel_date.day} {MON[sel_date.month-1]}"
     cal_sel = calendar_sync.padel_event_for_date(sel_iso, calendar_padel_events())
@@ -1025,16 +1054,16 @@ def page_plan():
         )
     elif sel_date == START_DATE and day["focus"] == "rest":
         st.markdown(
-            f"<div class='hero' style='background:radial-gradient(130% 90% at 100% 0%, color-mix(in srgb,var(--purple) 30%,transparent), transparent 60%), linear-gradient(165deg, color-mix(in srgb,var(--purple) 14%,var(--surface)), var(--surface) 78%);border:1px solid color-mix(in srgb,var(--purple) 32%,var(--line))'>"
-            f"<div class='kick' style='color:var(--purple)'>● 💉 1. Doz Wegovy & Resmi Program Başlangıcı</div><h2>{day['name']} & Program Başlangıcı</h2>"
+            f"<div class='hero' style='background:radial-gradient(130% 90% at 100% 0%, color-mix(in srgb,var(--green) 28%,transparent), transparent 60%), linear-gradient(165deg, color-mix(in srgb,var(--green) 12%,var(--surface)), var(--surface) 78%);border:1px solid color-mix(in srgb,var(--green) 30%,var(--line))'>"
+            f"<div class='kick' style='color:var(--green)'>● 🏁 Resmi Program Başlangıcı (Antrenman & Beslenme)</div><h2>{day['name']} & Program Başlangıcı</h2>"
             f"<div class='chiprow'>"
-            f"<span class='chip' style='color:var(--purple)'>💉 Wegovy 0.25 mg</span>"
             f"<span class='chip' style='color:var(--green)'>⚖️ Başlangıç Tartımı</span>"
+            f"<span class='chip' style='color:var(--orange)'>🔥 Kalori & Makro Başlangıcı</span>"
             f"<span class='chip'>😴 Dinlenme & Hidrasyon</span>"
             f"</div>"
             f"<div class='muted' style='font-size:12.5px;margin-top:8px'>"
-            f"12 haftalık Wegovy koruma ve yağ yakım programının resmi başlangıç günü. İlk Wegovy dozunu (0.25 mg) uygula, başlangıç kilonu kaydet ve dinlen. "
-            f"Yarın ({DOW_LONG[(sel_date + dt.timedelta(days=1)).weekday()]}) <b>Üst A</b> ile ilk güç antrenmanı başlıyor!</div></div>",
+            f"12 haftalık antrenman ve kalori takip programının resmi başlangıç günü. Başlangıç kilonu kaydet, günlük kalori ve protein hedeflerine bugün başla. "
+            f"Yarın ({DOW_LONG[(sel_date + dt.timedelta(days=1)).weekday()]}) <b>Üst A</b> güç antrenmanı ile başlıyoruz; ilk Wegovy enjeksiyonu ise <b>27 Ekim Salı</b> günü uygulanacak.</div></div>",
             unsafe_allow_html=True,
         )
     elif day["exercises"]:
@@ -1043,6 +1072,10 @@ def page_plan():
         chips = "".join(f"<span class='chip'>{g}</span>" for g in P.day_groups(day))
         chips += "<span class='chip' style='color:var(--green)'>🏃 Eliptik 5+10 dk</span>"
         chips += "<span class='chip' style='color:var(--orange)'>🚣 Kürek 10 dk</span>"
+        if is_first_inj:
+            chips += f"<span class='chip' style='color:var(--purple)'>💉 1. Doz Wegovy ({ws['dose_mg']:g} mg)</span>"
+        elif is_inj_day:
+            chips += f"<span class='chip' style='color:var(--purple)'>💉 Wegovy ({ws['dose_mg']:g} mg)</span>"
         st.markdown(
             f"<div class='hero' style='background:radial-gradient(130% 90% at 100% 0%, color-mix(in srgb,{color} 28%,transparent), transparent 60%), linear-gradient(165deg, color-mix(in srgb,{color} 13%,var(--surface)), var(--surface) 80%);border:1px solid color-mix(in srgb,{color} 32%,var(--line))'>"
             f"<div class='kick' style='color:{color}'>● {day['tag']} · RPE {ph['rpe']}</div><h2>{day['name']}</h2>"
@@ -1058,18 +1091,28 @@ def page_plan():
             c.button("▶ Antrenmana git", type="primary", use_container_width=True, on_click=navigate, args=("workout",))
     elif P.day_cardio(day):
         cl = P.cardio_load(day)
+        inj_kick = " · <span style='color:var(--purple);font-weight:700'>💉 1. Doz Wegovy</span>" if is_first_inj else (" · <span style='color:var(--purple);font-weight:700'>💉 Wegovy Enjeksiyonu</span>" if is_inj_day else "")
+        inj_chip = f"<span class='chip' style='color:var(--purple)'>💉 1. Doz Wegovy ({ws['dose_mg']:g} mg)</span>" if is_first_inj else (f"<span class='chip' style='color:var(--purple)'>💉 Wegovy ({ws['dose_mg']:g} mg)</span>" if is_inj_day else "")
+        note_txt = day.get('note', '')
+        if is_first_inj:
+            note_txt += f" · 💉 <b>İlk Wegovy enjeksiyon günü ({ws['dose_mg']:g} mg):</b> Enjeksiyon sonrası bol hidrasyon ve sindirimi rahatlatıcı hafif beslenmeye özen göster."
+        elif is_inj_day:
+            note_txt += f" · 💉 Haftalık Wegovy enjeksiyon günü ({ws['dose_mg']:g} mg)."
+        chips_html = f"<div class='chiprow' style='margin-top:8px'>{inj_chip}</div>" if inj_chip else ""
         st.markdown(
             f"<div class='hero' style='background:radial-gradient(130% 90% at 100% 0%, color-mix(in srgb,{color} 24%,transparent), transparent 60%), linear-gradient(165deg, color-mix(in srgb,{color} 12%,var(--surface)), var(--surface) 80%);border:1px solid color-mix(in srgb,{color} 28%,var(--line))'>"
-            f"<div class='kick' style='color:{color}'>● {day['tag']}</div><h2>{day['name']}</h2>"
-            f"<div class='muted' style='font-size:13px;margin-top:6px'>{day.get('note','')} · {cl['min_lo']}–{cl['min_hi']} dk</div></div>",
+            f"<div class='kick' style='color:{color}'>● {day['tag']}{inj_kick}</div><h2>{day['name']}</h2>{chips_html}"
+            f"<div class='muted' style='font-size:13px;margin-top:6px'>{note_txt} · {cl['min_lo']}–{cl['min_hi']} dk</div></div>",
             unsafe_allow_html=True,
         )
         boxes = "".join(_cardio_box(c) for c in P.day_cardio(day))
         st.markdown(f"<div class='exgrid'>{boxes}</div>", unsafe_allow_html=True)
     else:
+        inj_chip = f"<span class='chip' style='color:var(--purple)'>💉 1. Doz Wegovy ({ws['dose_mg']:g} mg)</span>" if is_first_inj else (f"<span class='chip' style='color:var(--purple)'>💉 Wegovy ({ws['dose_mg']:g} mg)</span>" if is_inj_day else "")
+        chips_html = f"<div class='chiprow' style='margin-top:8px'>{inj_chip}</div>" if inj_chip else ""
         st.markdown(
             f"<div class='hero' style='background:linear-gradient(165deg, color-mix(in srgb,{color} 12%,var(--surface)), var(--surface) 80%);border:1px solid var(--line)'>"
-            f"<div class='kick' style='color:{color}'>● {day['tag'] or 'Dinlenme'}</div><h2>{day['name']}</h2>"
+            f"<div class='kick' style='color:{color}'>● {day['tag'] or 'Dinlenme'}</div><h2>{day['name']}</h2>{chips_html}"
             f"<div class='muted' style='font-size:13px;margin-top:6px'>{day.get('note','')}</div></div>",
             unsafe_allow_html=True,
         )

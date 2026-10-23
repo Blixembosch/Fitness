@@ -77,13 +77,35 @@ def test_functional_wegovy_injection_logging():
     import datetime as dt
     with tempfile.TemporaryDirectory() as td:
         os.environ["FITNESS_DB_PATH"] = str(Path(td) / "test.db")
-        at = _run_app("home", wegovy={"dose_mg": 0.25, "inj_weekday": dt.date.today().weekday(), "logs": []})
+        at = _run_app("home", wegovy={"dose_mg": 0.25, "inj_weekday": dt.date.today().weekday(), "start_date": dt.date.today().isoformat(), "logs": []})
         inj_btn = next((b for b in at.button if b.key == "inj_btn"), None)
         assert inj_btn is not None
         initial_count = len(at.session_state["wegovy"]["logs"])
         inj_btn.click().run()
         assert not at.exception
         assert len(at.session_state["wegovy"]["logs"]) == initial_count + 1
+
+
+def test_functional_start_date_separation_plan_and_wegovy():
+    """Verify training & calorie tracking starts on 25 Oct (Sunday), and Wegovy starts on 27 Oct (Tuesday)."""
+    import datetime as dt
+    from app import wegovy_status
+    with tempfile.TemporaryDirectory() as td:
+        os.environ["FITNESS_DB_PATH"] = str(Path(td) / "test.db")
+        # 1. On Sunday 25 Oct 2026: Training starts, Wegovy is in 2 days (no 48h warning)
+        sunday_25 = dt.date(2026, 10, 25)
+        ws_sun = wegovy_status(sunday_25)
+        assert ws_sun["in_48h"] is False
+        assert ws_sun["days_until"] == 2
+        assert "2 gün sonra" in ws_sun["sched_lbl"]
+        assert ws_sun["inj_weekday"] == 1  # Tuesday
+
+        # 2. On Tuesday 27 Oct 2026: Wegovy injection starts
+        tuesday_27 = dt.date(2026, 10, 27)
+        ws_tue = wegovy_status(tuesday_27)
+        assert ws_tue["days_until"] == 0
+        assert ws_tue["in_48h"] is True
+        assert "1. Doz" in ws_tue["sched_lbl"] or "enjeksiyon günü" in ws_tue["sched_lbl"]
 
 
 def test_functional_workout_step_interaction():
