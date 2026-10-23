@@ -283,4 +283,79 @@ def test_functional_plan_page_starts_from_october_25_baseline():
         assert len(h2_markdowns) > 0
 
 
+def test_functional_dynamic_calendar_padel_and_dual_sessions():
+    """Verify Google Calendar events on Tuesday 27 and Wednesday 28 dynamically adjust plan and show dual session on Wednesday."""
+    from unittest.mock import patch
+    import datetime as dt
+    from app import program_week_grid
+
+    mock_events = [
+        {
+            "summary": "Padel Training",
+            "date": "2026-10-27",
+            "start_time": "20:00",
+            "end_time": "21:30",
+            "is_padel": True,
+            "location": "Tennis & Padel Meerhoven",
+        },
+        {
+            "summary": "✅ Padel with Isa & Robbert",
+            "date": "2026-10-28",
+            "start_time": "19:00",
+            "end_time": "20:30",
+            "is_padel": True,
+            "location": "TV Meerhoven, Eindhoven",
+        },
+    ]
+
+    import streamlit as st
+    st.cache_data.clear()
+    unique_url = "https://calendar.google.com/ical/mock_dual_test.ics"
+
+    with patch("lib.calendar_sync.fetch_padel_events", return_value=mock_events), \
+         patch("lib.calendar_sync.get_calendar_url", return_value=unique_url):
+        # 1. Verify program_week_grid handles Tuesday (Padel) and Wednesday (Dual: Alt A + Padel)
+        week_mon = dt.date(2026, 10, 26)  # Monday
+        grid = program_week_grid(week_mon)
+
+        # Mon 26: Upper A lift
+        assert grid[0]["name"] == "Üst A"
+        assert grid[0]["kind"] == "lift"
+
+        # Tue 27: Padel from calendar
+        assert grid[1]["name"] == "Padel"
+        assert grid[1]["kind"] == "padel"
+        assert grid[1]["planned"] is True
+        assert grid[1]["cal_ev"]["summary"] == "Padel Training"
+
+        # Wed 28: Dual session (Alt A + Padel)
+        assert grid[2]["name"] == "Alt A + 🎾"
+        assert grid[2]["kind"] == "dual"
+        assert grid[2]["planned"] is True
+        assert grid[2]["cal_ev"]["summary"] == "✅ Padel with Isa & Robbert"
+
+        # Thu 29: No calendar event scheduled
+        assert grid[3]["cal_ev"] is None
+
+        # 2. Verify Plan page renders both Padel and Workout on Wednesday 28
+        with tempfile.TemporaryDirectory() as td:
+            os.environ["FITNESS_DB_PATH"] = str(Path(td) / "test.db")
+            # Select day index 3 (which corresponds to 28 Oct in 25 Oct base week: 0=25, 1=26, 2=27, 3=28)
+            at = _run_app(
+                "plan",
+                body={"start_date": "2026-10-25", "theme": "dark"},
+                settings={"gcal_url": unique_url},
+                plan_day_idx=3,
+            )
+            assert not at.exception
+            rendered_text = " ".join(str(m.value) for m in at.markdown)
+
+            # Wednesday 28 must show BOTH Padel with Isa & Robbert AND Alt A
+            assert "Padel with Isa & Robbert" in rendered_text
+            assert "Alt A" in rendered_text
+            assert "Çift Seans" in rendered_text
+            assert "Güç Antrenmanı Adımları" in rendered_text
+
+
+
 

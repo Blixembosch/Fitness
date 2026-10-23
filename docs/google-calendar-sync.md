@@ -42,9 +42,13 @@ GOOGLE_CALENDAR_ICAL_URL = "https://calendar.google.com/calendar/ical/SENIN_EMAI
 
 ## 4. Nasıl Çalışır?
 
-- Takvim etkinlik başlıklarında `Padel`, `Padel Maçı`, `Peak Padel`, `Padel w/ Mert` veya `Tennis` kelimeleri arandığında seans otomatik yakalanır.
+- **Akıllı Eşleşme:** Takvim etkinlik başlıklarında `Padel`, `Padel Training`, `Padel w/ Mert` veya `Tennis` kelimeleri (örn. `✅ Padel with Isa & Robbert`) arandığında seans otomatik yakalanır.
 - **Atlas'ın Dersleri Hariç Tutulur:** Takvimde başlığında veya açıklamasında `Atlas`, `çocuk`, `junior` geçen etkinlikler otomatik olarak filtrelenir ve yalnızca Anıl'ın kendi maçları programa dahil edilir.
+- **Dinamik Gün Eşleşmesi:** Padel seansları statik günlerle sınırlı değildir. Takvimde hangi gün maç veya antrenman varsa (örn. Salı 20:00 ve Çarşamba 19:00), o günün planına dinamik olarak yansıtılır. Takvimde maç olmayan günlerde ise plan otomatik olarak aktif dinlenmeye geçer.
+- **Çift Seans (Dual Session) Desteği:** Padel seansının olduğu gün aynı zamanda planlanmış bir ağırlık antrenmanı varsa (örn. Çarşamba günü Alt A güç antrenmanı), sistem her iki aktiviteyi de aynı gün kartında ("Alt A & 🎾 Padel Çift Seansı") gösterir:
+  - Üst kısımda Padel maç detayları (saat, konum, enerji/RPE temposu tavsiyesi),
+  - Alt kısımda güç antrenmanının 9 adımlık tam egzersiz kartları (`.exgrid`) bir arada yer alır.
 - Tek seferlik maçlar ve haftalık tekrarlanan etkinlikler (`RRULE`) desteklenir.
-- Etkinlik saati (örn. `19:30`) ve kulüp konumu (örn. `Peak Padel Club`) Ana Sayfa ve Antrenman sekmesinde gösterilir.
-- Takvimde Padel olan günlerde günün programı otomatik olarak Padel odaklı dinamik moda geçer.
+- Etkinlik saati (örn. `19:00–20:30`) ve kulüp konumu (örn. `TV Meerhoven, Eindhoven`) Ana Sayfa ve Plan sekmesinde canlı rozet olarak gösterilir.
 - Performans için takvim verileri 5 dakikalık akıllı önbellekte (`@st.cache_data`) tutulur.
+

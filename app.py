@@ -373,8 +373,10 @@ def week_counts(week_iso: str):
 
 
 def program_week_grid(week_start: dt.date):
-    """Per-day plan vs actual for a week: [{dow, day, iso, name, color, kind, planned, done}]."""
+    """Per-day plan vs actual for a week: [{dow, day, iso, name, color, kind, planned, done, cal_ev}]."""
     strv, padv, crdv = strength_dates_all(), padel_dates_all(), cardio_dates_all()
+    cal_events = calendar_padel_events()
+    has_calendar = bool(cal_events)
     grid = []
     for i in range(7):
         d = week_start + dt.timedelta(days=i)
@@ -386,21 +388,29 @@ def program_week_grid(week_start: dt.date):
         has_pad = (iso in padv) and not is_pre_start
         has_crd = (iso in crdv) and not is_pre_start
 
-        is_plan_pad = ("padel" in day["key"].lower()) and not is_pre_start
-        is_plan_lift = (day["focus"] in ("upper", "lower", "full")) and not is_pre_start
-        is_plan_crd = bool(P.day_cardio(day)) and not is_pre_start
+        cal_ev = calendar_sync.padel_event_for_date(iso, cal_events)
+        has_cal_pad = (cal_ev is not None) and not is_pre_start
 
-        # Dynamic priority: if actual workouts happened, reflect them accurately
-        if has_pad and has_str:
-            kind = "lift"
+        is_plan_lift = (day["focus"] in ("upper", "lower", "full")) and not is_pre_start
+        # If calendar has padel sessions, prioritize actual calendar feed; else fallback to static template
+        if has_calendar:
+            is_plan_pad = has_cal_pad
+        else:
+            is_plan_pad = ("padel" in day["key"].lower()) and not is_pre_start
+
+        is_plan_crd = bool(P.day_cardio(day)) and not is_pre_start and not is_plan_pad
+
+        # Dynamic priority: if actual workouts happened or planned dual sessions
+        if (has_pad or has_cal_pad) and (has_str or is_plan_lift):
+            kind = "dual"
             name = f"{day['name']} + 🎾"
             color = "var(--blue)"
-            done = True
-        elif has_pad:
+            done = bool(has_pad and has_str) if (has_cal_pad and is_plan_lift) else bool(has_pad or has_str)
+        elif has_pad or has_cal_pad:
             kind = "padel"
-            name = "Padel" if not is_plan_pad else day["name"]
+            name = "Padel"
             color = "var(--teal)"
-            done = True
+            done = has_pad
         elif has_str:
             kind = "lift"
             name = day["name"] if is_plan_lift else "Güç"
@@ -411,15 +421,15 @@ def program_week_grid(week_start: dt.date):
             name = "Kardiyo"
             color = "var(--green)"
             done = True
-        elif is_plan_pad:
-            kind = "padel"
-            name = day["name"]
-            color = "var(--teal)"
-            done = False
         elif is_plan_lift:
             kind = "lift"
             name = day["name"]
             color = P.FOCUS_COLOR.get(day["focus"], "var(--line)")
+            done = False
+        elif is_plan_pad:
+            kind = "padel"
+            name = "Padel"
+            color = "var(--teal)"
             done = False
         elif is_plan_crd:
             kind = "cardio"
@@ -428,13 +438,13 @@ def program_week_grid(week_start: dt.date):
             done = False
         else:
             kind = day["focus"]
-            name = day["name"]
+            name = "Dinlenme" if day["focus"] == "rest" else day["name"]
             color = "var(--line)"
             done = False
 
-        planned = is_plan_lift or is_plan_pad or is_plan_crd
+        planned = is_plan_lift or is_plan_pad or is_plan_crd or has_cal_pad
         grid.append({"dow": DOW[dow_idx], "day": d.day, "iso": iso, "name": name, "color": color,
-                     "kind": kind, "planned": planned, "done": done})
+                     "kind": kind, "planned": planned, "done": done, "cal_ev": cal_ev})
     return grid
 
 
@@ -715,21 +725,40 @@ def page_home():
             color = P.FOCUS_COLOR[day["focus"]]
             phase, pextra = current_phase()
             ws = wegovy_status()
+            cal_today = calendar_sync.padel_event_for_date(TODAY_ISO, calendar_padel_events())
+            has_cal_pad = cal_today is not None
             rpe_lbl = f"RPE {phase['rpe']}" + (" · 💉 48s esnek" if ws["in_48h"] else "")
             if day["exercises"]:
                 load = P.day_load(day, pextra)
                 steps = P.workout_steps(day, pextra)
                 chips = "".join(f"<span class='chip'>{g}</span>" for g in P.day_groups(day))
+                if has_cal_pad:
+                    t_str = f" ({cal_today['start_time']})" if cal_today.get("start_time") else ""
+                    chips += f"<span class='chip' style='color:var(--teal)'>🎾 {cal_today['summary']}{t_str}</span>"
                 chips += "<span class='chip' style='color:var(--green)'>🏃 Eliptik 5+10 dk</span>"
                 chips += "<span class='chip' style='color:var(--orange)'>🚣 Kürek 10 dk</span>"
+                hero_title = f"{day['name']} & 🎾 Padel" if has_cal_pad else day["name"]
+                hero_kick = f"● {day['tag']} + 🎾 Padel Maçı · {rpe_lbl}" if has_cal_pad else f"● {day['tag']} · {rpe_lbl}"
+                extra_note = f" · 🎾 <b>Takvimde Padel:</b> {cal_today['summary']} ({cal_today.get('start_time','')})" if has_cal_pad else ""
                 st.markdown(
                     f"<div class='hero' style='background:radial-gradient(130% 90% at 100% 0%, color-mix(in srgb,{color} 30%,transparent), transparent 60%), linear-gradient(165deg, color-mix(in srgb,{color} 14%,var(--surface)), var(--surface) 78%); border:1px solid color-mix(in srgb,{color} 35%,var(--line))'>"
-                    f"<div class='kick' style='color:{color}'>● {day['tag']} · {rpe_lbl}</div>"
-                    f"<h2>{day['name']}</h2><div class='chiprow'>{chips}</div>"
-                    f"<div class='muted' style='font-size:12px;margin-top:6px'>{len(steps)} adım ({load['exercises']} güç + Eliptik & Kürek) · {load['sets']} güç seti + 25 dk yağ yakım kardiyo</div></div>",
+                    f"<div class='kick' style='color:{color}'>{hero_kick}</div>"
+                    f"<h2>{hero_title}</h2><div class='chiprow'>{chips}</div>"
+                    f"<div class='muted' style='font-size:12px;margin-top:6px'>{len(steps)} adım ({load['exercises']} güç + Eliptik & Kürek) · {load['sets']} güç seti + 25 dk yağ yakım kardiyo{extra_note}</div></div>",
                     unsafe_allow_html=True,
                 )
                 st.button("▶ Antrenmana git", type="primary", use_container_width=True, on_click=navigate, args=("workout",))
+            elif has_cal_pad:
+                t_str = f" · Saat {cal_today['start_time']}" if cal_today.get("start_time") else ""
+                l_str = f" @ {cal_today['location']}" if cal_today.get("location") else ""
+                chips = f"<div class='chiprow' style='margin-top:8px'><span class='chip' style='color:var(--teal)'>🎾 Padel Seansı</span><span class='chip' style='color:var(--teal)'>⏰ {cal_today.get('start_time','')}</span>" + (f"<span class='chip'>📍 {cal_today['location']}</span>" if cal_today.get("location") else "") + "</div>"
+                st.markdown(
+                    f"<div class='hero' style='background:radial-gradient(130% 90% at 100% 0%, color-mix(in srgb,var(--teal) 26%,transparent), transparent 60%), linear-gradient(165deg, color-mix(in srgb,var(--teal) 12%,var(--surface)), var(--surface) 80%);border:1px solid color-mix(in srgb,var(--teal) 32%,var(--line))'>"
+                    f"<div class='kick' style='color:var(--teal)'>● Padel · Google Takvim</div>"
+                    f"<h2>🎾 {cal_today['summary']}</h2>{chips}"
+                    f"<div class='muted' style='font-size:12px;margin-top:6px'>Google Takvim'den senkronize edildi{t_str}{l_str}.</div></div>",
+                    unsafe_allow_html=True,
+                )
             else:
                 cardio = P.day_cardio(day)
                 extra = ""
@@ -1003,6 +1032,7 @@ def page_plan():
     done = strength_dates_all()
     pad = padel_dates_all()
     ws = wegovy_status()
+    cal_events = calendar_padel_events()
 
     cols = st.columns(7)
     for i, col in enumerate(cols):
@@ -1011,11 +1041,24 @@ def page_plan():
         dow_idx = d.weekday()
         day = P.day_for(dow_idx)
         color = P.FOCUS_COLOR[day["focus"]]
-        dot = "var(--green)" if (iso in done or iso in pad) else (color if day["focus"] != "rest" else "var(--line)")
+        cal_ev = calendar_sync.padel_event_for_date(iso, cal_events)
+        has_cal_pad = cal_ev is not None
+
+        if (iso in done or iso in pad):
+            dot = "var(--green)"
+        elif has_cal_pad:
+            dot = "var(--teal)"
+        elif day["focus"] != "rest":
+            dot = color
+        else:
+            dot = "var(--line)"
+
+        pad_badge = "<span title='Padel: " + (cal_ev['summary'] if cal_ev else 'Padel') + "' style='font-size:10.5px;margin-inline-start:2px'>🎾</span>" if has_cal_pad else ""
         inj_dot = "<span title='Wegovy Enjeksiyonu' style='display:inline-block;width:5px;height:5px;border-radius:50%;background:var(--purple);margin-inline-start:3px;vertical-align:middle'></span>" if (d >= WEGOVY_START_DATE and dow_idx == ws["inj_weekday"]) else ""
+
         with col:
             st.markdown(
-                f"<div style='text-align:center;font-size:11px;color:var(--muted);font-weight:700'>{DOW[dow_idx]}"
+                f"<div style='text-align:center;font-size:11px;color:var(--muted);font-weight:700'>{DOW[dow_idx]}{pad_badge}"
                 f"<span style='display:inline-block;width:6px;height:6px;border-radius:50%;background:{dot};margin-inline-start:4px;vertical-align:middle'></span>{inj_dot}</div>",
                 unsafe_allow_html=True,
             )
@@ -1035,8 +1078,10 @@ def page_plan():
     is_inj_day = (sel_date >= WEGOVY_START_DATE and sel_dow == ws["inj_weekday"])
     is_first_inj = (sel_date == WEGOVY_START_DATE)
 
+    cal_sel = calendar_sync.padel_event_for_date(sel_iso, cal_events)
+    has_cal_padel = cal_sel is not None
+
     title = "Bugün" if sel_date == TODAY else f"{DOW_LONG[sel_dow]} · {sel_date.day} {MON[sel_date.month-1]}"
-    cal_sel = calendar_sync.padel_event_for_date(sel_iso, calendar_padel_events())
     cal_tag = ""
     if cal_sel:
         t_str = f" ({cal_sel['start_time']})" if cal_sel.get("start_time") else ""
@@ -1066,6 +1111,62 @@ def page_plan():
             f"Yarın ({DOW_LONG[(sel_date + dt.timedelta(days=1)).weekday()]}) <b>Üst A</b> güç antrenmanı ile başlıyoruz; ilk Wegovy enjeksiyonu ise <b>27 Ekim Salı</b> günü uygulanacak.</div></div>",
             unsafe_allow_html=True,
         )
+    elif day["exercises"] and has_cal_padel:
+        # DUAL SESSION: Strength Workout + Google Calendar Padel Match
+        load = P.day_load(day, extra)
+        steps = P.workout_steps(day, extra)
+        t_str = f" · Saat {cal_sel['start_time']}" if cal_sel.get("start_time") else ""
+        end_str = f"–{cal_sel['end_time']}" if cal_sel.get("end_time") else ""
+        time_badge = f"{cal_sel.get('start_time','')}{end_str}".strip()
+        loc_str = f" · 📍 {cal_sel['location']}" if cal_sel.get("location") else ""
+
+        chips = "".join(f"<span class='chip'>{g}</span>" for g in P.day_groups(day))
+        chips += f"<span class='chip' style='color:var(--teal)'>🎾 {cal_sel['summary']}{t_str}</span>"
+        chips += "<span class='chip' style='color:var(--green)'>🏃 Eliptik 5+10 dk</span>"
+        chips += "<span class='chip' style='color:var(--orange)'>🚣 Kürek 10 dk</span>"
+        if is_first_inj:
+            chips += f"<span class='chip' style='color:var(--purple)'>💉 1. Doz Wegovy ({ws['dose_mg']:g} mg)</span>"
+        elif is_inj_day:
+            chips += f"<span class='chip' style='color:var(--purple)'>💉 Wegovy ({ws['dose_mg']:g} mg)</span>"
+
+        st.markdown(
+            f"<div class='hero' style='background:radial-gradient(130% 90% at 100% 0%, color-mix(in srgb,var(--teal) 26%,transparent), transparent 60%), linear-gradient(165deg, color-mix(in srgb,{color} 14%,var(--surface)), var(--surface) 80%);border:1px solid color-mix(in srgb,var(--teal) 35%,var(--line))'>"
+            f"<div class='kick' style='color:var(--teal)'>● {day['tag']} + 🎾 Padel Maçı · RPE {ph['rpe']}</div>"
+            f"<h2>{day['name']} & 🎾 Padel Çift Seansı</h2>"
+            f"<div class='chiprow'>{chips}</div>"
+            f"<div class='muted' style='font-size:12.5px;margin-top:8px'>"
+            f"💡 <b>Çift Seans Günü:</b> Takviminde bugün hem <b>{day['name']}</b> güç antrenmanın hem de <b>{cal_sel['summary']}</b> ({time_badge}{loc_str}) Padel seansın var. "
+            f"Ağırlık antrenmanında bacakları aşırı tüketmemeye özen göster (RPE'yi ~1 puan esnet), bol hidrasyon ve karbonhidrat sağla.</div></div>",
+            unsafe_allow_html=True,
+        )
+
+        # 1. Padel Match Box
+        loc_line = f"<div class='muted' style='font-size:12px;margin-top:3px'>📍 {cal_sel['location']}</div>" if cal_sel.get("location") else ""
+        st.markdown(
+            f"<div class='fcard' style='background:radial-gradient(130% 90% at 100% 0%, color-mix(in srgb,var(--teal) 18%,transparent), transparent 60%), linear-gradient(165deg, color-mix(in srgb,var(--teal) 8%,var(--surface)), var(--surface) 80%);border:1px solid color-mix(in srgb,var(--teal) 30%,var(--line));margin:12px 0 16px'>"
+            f"<div style='display:flex;justify-content:space-between;align-items:center'>"
+            f"<div class='eyebrow' style='color:var(--teal);margin:0'>🎾 Google Takvim Padel Seansı</div>"
+            f"<span class='chip' style='color:var(--teal);font-size:11px'>{time_badge or 'Padel'}</span></div>"
+            f"<div style='font-family:Nunito;font-weight:800;font-size:16px;color:var(--fg);margin-top:6px'>{cal_sel['summary']}</div>"
+            f"{loc_line}"
+            f"<div style='font-size:11.5px;color:var(--orange);margin-top:6px'>⚡ <b>Enerji & Performans:</b> Akşamki Padel maçı için glikojen depolarını dolu tut. Ağırlık setlerinde tükenişe gitme (RPE 6–7), hidrasyona öncelik ver.</div>"
+            f"</div>",
+            unsafe_allow_html=True,
+        )
+
+        # 2. Strength Workout Steps
+        st.markdown(
+            f"<div style='font-weight:800;font-size:12.5px;color:var(--fg);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px'>"
+            f"🏋️ Güç Antrenmanı Adımları ({day['name']} · {load['exercises']} Egzersiz · {load['sets']} Güç Seti + 25 dk Kardiyo)"
+            f"</div>",
+            unsafe_allow_html=True,
+        )
+        boxes = "".join(_plan_step_box(i, e, color) for i, e in enumerate(steps, 1))
+        st.markdown(f"<div class='exgrid'>{boxes}</div>", unsafe_allow_html=True)
+        if sel_date == TODAY:
+            st.markdown("<div style='height:8px'></div>", unsafe_allow_html=True)
+            c = st.columns([1, 1, 1])[0]
+            c.button("▶ Antrenmana git", type="primary", use_container_width=True, on_click=navigate, args=("workout",))
     elif day["exercises"]:
         load = P.day_load(day, extra)
         steps = P.workout_steps(day, extra)
@@ -1089,6 +1190,42 @@ def page_plan():
             st.markdown("<div style='height:8px'></div>", unsafe_allow_html=True)
             c = st.columns([1, 1, 1])[0]
             c.button("▶ Antrenmana git", type="primary", use_container_width=True, on_click=navigate, args=("workout",))
+    elif has_cal_padel:
+        # PADEL DAY FROM GOOGLE CALENDAR
+        t_str = f" · Saat {cal_sel['start_time']}" if cal_sel.get("start_time") else ""
+        end_str = f"–{cal_sel['end_time']}" if cal_sel.get("end_time") else ""
+        time_badge = f"{cal_sel.get('start_time','')}{end_str}".strip()
+        loc_str = f" · 📍 {cal_sel['location']}" if cal_sel.get("location") else ""
+
+        inj_kick = " · <span style='color:var(--purple);font-weight:700'>💉 1. Doz Wegovy</span>" if is_first_inj else (" · <span style='color:var(--purple);font-weight:700'>💉 Wegovy Enjeksiyonu</span>" if is_inj_day else "")
+        inj_chip = f"<span class='chip' style='color:var(--purple)'>💉 1. Doz Wegovy ({ws['dose_mg']:g} mg)</span>" if is_first_inj else (f"<span class='chip' style='color:var(--purple)'>💉 Wegovy ({ws['dose_mg']:g} mg)</span>" if is_inj_day else "")
+        chips_html = f"<div class='chiprow' style='margin-top:8px'><span class='chip' style='color:var(--teal)'>🎾 Padel Seansı</span><span class='chip' style='color:var(--teal)'>⏰ {time_badge or 'Maç/Ders'}</span>" + (f"<span class='chip'>📍 {cal_sel['location']}</span>" if cal_sel.get("location") else "") + (f"{inj_chip}" if inj_chip else "") + "</div>"
+
+        extra_note = ""
+        if is_first_inj:
+            extra_note = f"<br>💉 <b>İlk Wegovy enjeksiyon günü ({ws['dose_mg']:g} mg):</b> Enjeksiyon sonrası bol hidrasyon ve sindirimi rahatlatıcı hafif beslenmeye özen göster; padel sırasında hafif tempoyu koru."
+        elif is_inj_day:
+            extra_note = f"<br>💉 <b>Haftalık Wegovy enjeksiyon günü ({ws['dose_mg']:g} mg):</b> Bol su tüket."
+
+        st.markdown(
+            f"<div class='hero' style='background:radial-gradient(130% 90% at 100% 0%, color-mix(in srgb,var(--teal) 26%,transparent), transparent 60%), linear-gradient(165deg, color-mix(in srgb,var(--teal) 12%,var(--surface)), var(--surface) 80%);border:1px solid color-mix(in srgb,var(--teal) 32%,var(--line))'>"
+            f"<div class='kick' style='color:var(--teal)'>● Padel · Google Takvim{inj_kick}</div>"
+            f"<h2>🎾 {cal_sel['summary']}</h2>{chips_html}"
+            f"<div class='muted' style='font-size:13px;margin-top:6px'>"
+            f"Google Takvim'den senkronize edildi ({time_badge}{loc_str}). Maç öncesi dinamik ısınma ve bol hidrasyona dikkat et.{extra_note}</div></div>",
+            unsafe_allow_html=True,
+        )
+    elif sel_dow == 3:
+        # Thursday fallback when no Google Calendar event is scheduled
+        st.markdown(
+            f"<div class='hero' style='background:linear-gradient(165deg, color-mix(in srgb,var(--surface) 90%,var(--line)), var(--surface) 80%);border:1px solid var(--line)'>"
+            f"<div class='kick' style='color:var(--muted)'>● Dinlenme & Esnek Gün</div>"
+            f"<h2>Aktif Dinlenme / İsteğe Bağlı Padel</h2>"
+            f"<div class='chiprow' style='margin-top:8px'><span class='chip'>😴 Toparlanma</span><span class='chip'>🎾 İsteğe Bağlı Padel</span></div>"
+            f"<div class='muted' style='font-size:13px;margin-top:6px'>"
+            f"Google Takvim'de bugün için kayıtlı maç bulunmuyor. İsteğe bağlı serbest padel oynayabilir, hafif yürüyüş ile toparlanabilir ya da dinlenebilirsin.</div></div>",
+            unsafe_allow_html=True,
+        )
     elif P.day_cardio(day):
         cl = P.cardio_load(day)
         inj_kick = " · <span style='color:var(--purple);font-weight:700'>💉 1. Doz Wegovy</span>" if is_first_inj else (" · <span style='color:var(--purple);font-weight:700'>💉 Wegovy Enjeksiyonu</span>" if is_inj_day else "")

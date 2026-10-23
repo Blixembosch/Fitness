@@ -28,6 +28,7 @@ Her güç antrenmanı (Üst A, Alt A, Üst B), glikojen depolarını ve kas küt
 ### 1. Google Takvim (Padel) Entegrasyonu
 - Gizli iCal URL'si (`.streamlit/secrets.toml` veya Beslenme sekmesindeki ayar kutusu) ile Anıl'ın Padel maçları takvimden otomatik çekilir.
 - **Akıllı Filtreleme:** Atlas'ın dersleri ("Padel Training for Atlas", çocuk, junior) otomatik elenir, programa ve hedeflere sadece Anıl'ın maçları yansıtılır.
+- **Dinamik Takvim Eşleme & Çift Seans Desteği:** Padel günleri şablona bağlı kalmaz; Google Takvim'deki gerçek maçlara göre (örn. Salı Padel Training, Çarşamba Padel with Isa & Robbert) otomatik güncellenir. Bir günde hem güç antrenmanı (örn. Alt A) hem de Padel maçı varsa sistem ikisini de aynı ekranda eksiksiz gösterir; çift seans enerji ve RPE optimizasyonu sağlar.
 - Ayrıntılı kurulum için: [Google Takvim Entegrasyon Kılavuzu](docs/google-calendar-sync.md).
 
 ### 2. Apple Health & Cronometer Senkronizasyonu
@@ -51,7 +52,7 @@ Her güç antrenmanı (Üst A, Alt A, Üst B), glikojen depolarını ve kas küt
 
 ## Test ve Kalite Güvencesi
 
-Proje, 95 otomatik birim, erişilebilirlik ve 5 sayfanın CSS/bileşen bütünlüğünü denetleyen Streamlit `AppTest` fonksiyonel testi ile korunur:
+Proje, 96 otomatik birim, erişilebilirlik ve 5 sayfanın CSS/bileşen bütünlüğünü denetleyen Streamlit `AppTest` fonksiyonel testi ile korunur:
 ```bash
 /usr/local/bin/python3 run_tests.py
 ```
