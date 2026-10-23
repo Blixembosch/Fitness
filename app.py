@@ -20,7 +20,7 @@ S.setdefault("page", "home")
 # the daily protein target sits in a sustainable 150–180 g muscle-preservation band on Wegovy.
 S.setdefault("body", {"birth": "1992-03-12", "height": 178, "sex": "male", "activity": "light",
                       "deficit": 500, "kcal_goal": 2000, "protein_mode": "adjusted", "theme": "dark",
-                      "start_date": "2026-10-25"})
+                      "start_date": "2026-10-25", "fat_pct": 0.30, "fat_mode": "balanced"})
 WEGOVY_DOSES = [0.25, 0.5, 1.0, 1.7, 2.4]
 WEGOVY_SITES = ["Sol karın", "Sağ karın", "Sol üst bacak", "Sağ üst bacak", "Sol üst kol", "Sağ üst kol"]
 S.setdefault("wegovy", {"dose_mg": 0.25, "inj_weekday": 1, "start_date": "2026-10-27", "logs": []})  # default Tuesday (1)
@@ -48,6 +48,8 @@ S.setdefault("nutrition", None)       # DataFrame or None
 # Hydrate from local SQLite (data/fitness.db) + optional private Gist once per browser session
 store.hydrate_session(S)
 S["body"].setdefault("theme", "dark")
+S["body"].setdefault("fat_pct", 0.30)
+S["body"].setdefault("fat_mode", "balanced")
 ui.inject(S["body"].get("theme", "dark"))
 
 _start_str = S.get("body", {}).get("start_date") or "2026-10-25"
@@ -616,13 +618,14 @@ def compute_targets():
     sex = b.get("sex", "male")
     activity = b.get("activity", "light")
     deficit = int(b.get("deficit") or 500)
+    fat_pct = float(b.get("fat_pct") or 0.30)
     pband = nutrition.protein_band(w, height, mode=pmode)
     t = nutrition.estimate_targets(w, height, age, sex, activity, deficit,
-                                   floor=1500, protein_per_kg=PROTEIN_PER_KG, kcal=b.get("kcal_goal"))
+                                   floor=1500, protein_per_kg=PROTEIN_PER_KG, fat_pct=fat_pct, kcal=b.get("kcal_goal"))
     prot_target = pband["target"]
     fat_target = t["fat"]
     carbs_target = max(0, round((t["kcal"] - prot_target * 4 - fat_target * 9) / 4))
-    S["targets"] = {"kcal": t["kcal"], "protein": prot_target, "carbs": carbs_target, "fat": fat_target}
+    S["targets"] = {"kcal": t["kcal"], "protein": prot_target, "carbs": carbs_target, "fat": fat_target, "fiber": FIBER_TARGET}
     S["protein_band"] = pband
     S["tdee"] = t["tdee"]
     S["deficit_now"] = t["deficit"]
@@ -697,6 +700,41 @@ def page_home():
     r3 = ui.ring(prot / t["protein"] if t["protein"] else 0, "var(--orange)", f"{prot}<small>/{t['protein']}</small>", f"Protein ({pband['min']}–{pband['max']}g)", 50)
     r4 = ui.ring(kcal / t["kcal"] if t["kcal"] else 0, "var(--green)", f"{kcal}<small>/{t['kcal']}</small>", "Kalori", 50)
     st.markdown(f"<div class='rings'>{r1}{r2}{r3}{r4}</div>", unsafe_allow_html=True)
+
+    carbs = int(nt["carbs"]) if nt and "carbs" in nt else 0
+    fat = int(nt["fat"]) if nt and "fat" in nt else 0
+    fiber = int(nt["fiber"]) if nt and "fiber" in nt else 0
+
+    if nt:
+        p_rem = max(0, t["protein"] - prot)
+        f_rem = max(0, t["fat"] - fat)
+        c_rem = max(0, t["carbs"] - carbs)
+        fib_rem = max(0, FIBER_TARGET - fiber)
+        st.markdown(
+            f"<div class='fcard' style='padding:8px 14px;margin-bottom:12px;border-color:color-mix(in srgb,var(--line) 80%,transparent)'>"
+            f"<div style='display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px'>"
+            f"<div style='font-size:11.5px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px'>Makro Takibi (Bugün)</div>"
+            f"<div style='font-size:12px;color:var(--fg)'>"
+            f"<span style='color:var(--orange);font-weight:700'>🥩 {prot}/{t['protein']}g Protein</span> <small class='muted'>({p_rem}g kaldı)</small> &nbsp;·&nbsp; "
+            f"<span style='color:var(--purple);font-weight:700'>🥑 {fat}/{t['fat']}g Yağ</span> <small class='muted'>({f_rem}g kaldı)</small> &nbsp;·&nbsp; "
+            f"<span style='color:var(--teal);font-weight:700'>🍚 {carbs}/{t['carbs']}g Karb</span> <small class='muted'>({c_rem}g kaldı)</small> &nbsp;·&nbsp; "
+            f"<span style='color:var(--green);font-weight:700'>🥦 {fiber}/{FIBER_TARGET}g Lif</span>"
+            f"</div></div></div>",
+            unsafe_allow_html=True,
+        )
+    else:
+        st.markdown(
+            f"<div class='fcard' style='padding:8px 14px;margin-bottom:12px;border-color:color-mix(in srgb,var(--line) 80%,transparent)'>"
+            f"<div style='display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px'>"
+            f"<div style='font-size:11.5px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px'>🎯 Günlük Makro Hedefleri</div>"
+            f"<div style='font-size:12px;color:var(--fg)'>"
+            f"<span style='color:var(--orange);font-weight:700'>🥩 {t['protein']}g Protein</span> &nbsp;·&nbsp; "
+            f"<span style='color:var(--purple);font-weight:700'>🥑 {t['fat']}g Yağ</span> &nbsp;·&nbsp; "
+            f"<span style='color:var(--teal);font-weight:700'>🍚 {t['carbs']}g Karbonhidrat</span> &nbsp;·&nbsp; "
+            f"<span style='color:var(--green);font-weight:700'>🥦 {FIBER_TARGET}g Lif</span>"
+            f"</div></div></div>",
+            unsafe_allow_html=True,
+        )
 
     left, right = st.columns([1.35, 1], gap="medium")
 
@@ -1687,6 +1725,8 @@ def page_stats():
         recent = pd.DataFrame()
     avg_prot = round(recent["protein"].mean()) if not recent.empty else 0
     avg_kcal = round(recent["kcal"].mean()) if not recent.empty else 0
+    avg_carbs = round(recent["carbs"].mean()) if (not recent.empty and "carbs" in recent.columns) else 0
+    avg_fat = round(recent["fat"].mean()) if (not recent.empty and "fat" in recent.columns) else 0
     pband = S["protein_band"]
     prot_floor = pband["min"]
     met = int((recent["protein"] >= prot_floor).sum()) if not recent.empty else 0
@@ -1761,6 +1801,22 @@ def page_stats():
     rows.append(ui.metric_row("Kalori açığı", f"{deficit if deficit is not None else '–'} kcal",
                               f"{metrics.DEFICIT_KCAL[0]}–{metrics.DEFICIT_KCAL[1]}", cls, word,
                               "Orta düzey açık yağı eritir, kası korur (~0,5–1%/hafta)."))
+    t_fat = S["targets"]["fat"]
+    fat_val_str = f"{avg_fat} g/gün" if avg_fat else f"{t_fat} g/gün"
+    fat_cls = "good" if (avg_fat and 0.8 * t_fat <= avg_fat <= 1.25 * t_fat) else ("" if not avg_fat else "bad")
+    fat_verdict = "dengeli" if (avg_fat and 0.8 * t_fat <= avg_fat <= 1.25 * t_fat) else ("hedef" if not avg_fat else ("yüksek" if avg_fat > t_fat else "düşük"))
+    fat_pct_label = round(float(S["body"].get("fat_pct", 0.30)) * 100)
+    rows.append(ui.metric_row("Sağlıklı yağ", fat_val_str,
+                              f"~{t_fat} g (%{fat_pct_label} kalori)", fat_cls, fat_verdict,
+                              "Hormon sentezi ve tokluk; Wegovy sindirim konforu için %25–%35 bandında tutulur."))
+
+    t_carbs = S["targets"]["carbs"]
+    carb_val_str = f"{avg_carbs} g/gün" if avg_carbs else f"{t_carbs} g/gün"
+    carb_cls = "good" if (avg_carbs and 0.8 * t_carbs <= avg_carbs <= 1.25 * t_carbs) else ("" if not avg_carbs else "bad")
+    carb_verdict = "dengeli" if (avg_carbs and 0.8 * t_carbs <= avg_carbs <= 1.25 * t_carbs) else ("hedef" if not avg_carbs else ("yüksek" if avg_carbs > t_carbs else "düşük"))
+    rows.append(ui.metric_row("Karbonhidrat", carb_val_str,
+                              f"~{t_carbs} g", carb_cls, carb_verdict,
+                              "Padel maçları ve ağırlık seanslarında glikojen yakıtı; kas yıkımını önler."))
     payload = {"gkg": gkg, "protein_target": S["targets"]["protein"], "avg_protein": avg_prot,
                "loss_pct_week": loss, "avg_sets_per_muscle": avg_sets, "deficit_kcal": deficit,
                "avg_kcal": avg_kcal, "weight_kg": weight_kg}
@@ -1911,27 +1967,58 @@ def page_nutrition():
         )
         fib_val = round(float(nt.get("fiber") or 0))
         fib_pct = round(fib_val / FIBER_TARGET * 100) if FIBER_TARGET else 0
+        p_rem = int(ds['protein']['remaining']) if ds['protein']['remaining'] is not None else 0
+        c_rem = int(ds['carbs']['remaining']) if ds['carbs']['remaining'] is not None else 0
+        f_rem = int(ds['fat']['remaining']) if ds['fat']['remaining'] is not None else 0
+        fib_rem = max(0, FIBER_TARGET - fib_val)
         bars = "".join([
-            ui.bar(f"Protein (hedef bant {pband['min']}–{pband['max']}g)", f"{int(ds['protein']['consumed'])} / {ds['protein']['target']} g", ds['protein']['pct'] or 0, "var(--orange)", primary=True),
-            ui.bar("Karbonhidrat", f"{int(ds['carbs']['consumed'])} / {ds['carbs']['target']} g", ds['carbs']['pct'] or 0, "var(--teal)"),
-            ui.bar("Yağ", f"{int(ds['fat']['consumed'])} / {ds['fat']['target']} g", ds['fat']['pct'] or 0, "var(--purple)"),
-            ui.bar("Lif (Wegovy sindirim desteği)", f"{fib_val} / {FIBER_TARGET} g", fib_pct, "var(--green)"),
+            ui.bar(f"Protein (hedef bant {pband['min']}–{pband['max']}g)", f"{int(ds['protein']['consumed'])} / {ds['protein']['target']} g ({p_rem}g kaldı)", ds['protein']['pct'] or 0, "var(--orange)", primary=True),
+            ui.bar("Karbonhidrat (Padel/güç glikojeni)", f"{int(ds['carbs']['consumed'])} / {ds['carbs']['target']} g ({c_rem}g kaldı)", ds['carbs']['pct'] or 0, "var(--teal)"),
+            ui.bar("Yağ (hormon & tokluk desteği)", f"{int(ds['fat']['consumed'])} / {ds['fat']['target']} g ({f_rem}g kaldı)", ds['fat']['pct'] or 0, "var(--purple)"),
+            ui.bar("Lif (Wegovy sindirim desteği)", f"{fib_val} / {FIBER_TARGET} g ({fib_rem}g kaldı)", fib_pct, "var(--green)"),
         ])
         st.markdown(f"<div class='fcard'><div class='eyebrow'>Makrolar · bugün</div><div class='bars'>{bars}</div></div>", unsafe_allow_html=True)
         if S["nutrition"] is not None and not S["nutrition"].empty:
             post_nut = S["nutrition"][S["nutrition"]["date"] >= START_ISO]
             last7 = post_nut.tail(7)
             if len(last7) > 1:
-                fig = go.Figure(go.Bar(x=last7["date"], y=last7["protein"], marker_color="#fb923c"))
-                fig.add_hline(y=pband["min"], line_dash="dot", line_color="#34d399", annotation_text=f"Alt sınır ({pband['min']}g)")
-                fig.add_hline(y=t["protein"], line_dash="dash", line_color="#94a3b8", annotation_text=f"Hedef ({t['protein']}g)")
-                fig.update_layout(height=180, margin=dict(l=0, r=0, t=6, b=0), paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)", font=dict(color="#94a3b8"))
-                fig.update_xaxes(showgrid=False)
-                fig.update_yaxes(gridcolor="rgba(148,163,184,.12)", ticksuffix=" g")
-                st.markdown("<div class='eyebrow'>Son günler · protein</div>", unsafe_allow_html=True)
-                st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
+                st.markdown("<div class='eyebrow'>Son günler · Makro Trendi</div>", unsafe_allow_html=True)
+                tab_prot, tab_all = st.tabs(["🥩 Protein Trendi", "📊 Tüm Makrolar (Protein / Karb / Yağ)"])
+                with tab_prot:
+                    fig = go.Figure(go.Bar(x=last7["date"], y=last7["protein"], marker_color="#fb923c", name="Protein"))
+                    fig.add_hline(y=pband["min"], line_dash="dot", line_color="#34d399", annotation_text=f"Alt sınır ({pband['min']}g)")
+                    fig.add_hline(y=t["protein"], line_dash="dash", line_color="#94a3b8", annotation_text=f"Hedef ({t['protein']}g)")
+                    fig.update_layout(height=180, margin=dict(l=0, r=0, t=6, b=0), paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)", font=dict(color="#94a3b8"))
+                    fig.update_xaxes(showgrid=False)
+                    fig.update_yaxes(gridcolor="rgba(148,163,184,.12)", ticksuffix=" g")
+                    st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
+                with tab_all:
+                    fig2 = go.Figure()
+                    fig2.add_trace(go.Bar(x=last7["date"], y=last7["protein"], name="Protein", marker_color="#fb923c"))
+                    if "carbs" in last7.columns:
+                        fig2.add_trace(go.Bar(x=last7["date"], y=last7["carbs"], name="Karb", marker_color="#2dd4bf"))
+                    if "fat" in last7.columns:
+                        fig2.add_trace(go.Bar(x=last7["date"], y=last7["fat"], name="Yağ", marker_color="#c084fc"))
+                    fig2.update_layout(barmode="group", height=200, margin=dict(l=0, r=0, t=6, b=0),
+                                       paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
+                                       legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
+                                       font=dict(color="#94a3b8"))
+                    fig2.update_xaxes(showgrid=False)
+                    fig2.update_yaxes(gridcolor="rgba(148,163,184,.12)", ticksuffix=" g")
+                    st.plotly_chart(fig2, use_container_width=True, config={"displayModeBar": False})
     else:
-        st.info("Cronometer'dan **dailysummary.csv** yükle; kalori, protein, lif ve makroları burada özetlerim. Protein, Wegovy'de kas koruma için öncelikli.")
+        b_fat_pct = round(float(S["body"].get("fat_pct") or 0.30) * 100)
+        p_pct = round((t["protein"] * 4) / t["kcal"] * 100) if t["kcal"] else 32
+        c_pct = round((t["carbs"] * 4) / t["kcal"] * 100) if t["kcal"] else 38
+        tiles_html = "".join([
+            ui.tile("Kalori Hedefi", f"{t['kcal']}<small> kcal</small>", f"~{S.get('deficit_now', 500)} kcal açık"),
+            ui.tile("Protein Hedefi", f"{t['protein']}<small> g</small>", f"Bant: {pband['min']}–{pband['max']}g · %{p_pct}", "good"),
+            ui.tile("Sağlıklı Yağ", f"{t['fat']}<small> g</small>", f"Tokluk & Hormon · %{b_fat_pct}"),
+            ui.tile("Karbonhidrat", f"{t['carbs']}<small> g</small>", f"Padel & Kas Glikojeni · %{c_pct}"),
+            ui.tile("Lif Hedefi", f"{FIBER_TARGET}<small> g</small>", "Wegovy GI Konforu", "good"),
+        ])
+        st.markdown(f"<div class='tiles' style='margin-bottom:12px'>{tiles_html}</div>", unsafe_allow_html=True)
+        st.info("Cronometer'dan **dailysummary.csv** yükle; gün içindeki tüketimini ve kalan makrolarını yukarıdaki hedeflere göre canlı karşılaştırırım.")
 
     with st.container(border=True):
         st.markdown("<div class='eyebrow' style='margin:0 0 8px'>⚖️ Manuel Kilo Kaydet</div>", unsafe_allow_html=True)
@@ -2008,6 +2095,49 @@ def page_nutrition():
                 if m == "adjusted" else
                 "Tam vücut ağırlığı × 1.8 g/kg (Katı hedef)"
             ),
+        )
+        fat_options = {
+            "balanced": "Dengeli (Wegovy Uyumlu) — %30 Yağ / %38 Karb (Önerilen)",
+            "low_fat": "Düşük Yağ — %25 Yağ / %43 Karb (Mide hassasiyeti için)",
+            "moderate_fat": "Orta Yağ — %35 Yağ / %33 Karb (Daha yüksek tokluk)",
+            "custom": "Özel Yüzde (Slider ile belirle)",
+        }
+        cur_fm = b.get("fat_mode", "balanced")
+        if cur_fm not in fat_options:
+            cur_fm = "balanced"
+        sel_fm = st.selectbox(
+            "🥑 Yağ & 🍚 Karbonhidrat dağılım tercihi",
+            list(fat_options.keys()),
+            index=list(fat_options.keys()).index(cur_fm),
+            format_func=lambda k: fat_options[k],
+            help="Wegovy kullanırken yüksek yağlı besinler mide boşalmasını geciktirerek bulantı veya reflüyü tetikleyebilir. %25–35 yağ ideal sindirim sağlar; kalan kalori ise antrenman ve Padel için glikojene (karbonhidrata) ayrılır.",
+        )
+        b["fat_mode"] = sel_fm
+        if sel_fm == "balanced":
+            b["fat_pct"] = 0.30
+        elif sel_fm == "low_fat":
+            b["fat_pct"] = 0.25
+        elif sel_fm == "moderate_fat":
+            b["fat_pct"] = 0.35
+        else:
+            cur_pct = int(round(float(b.get("fat_pct") or 0.30) * 100))
+            new_pct = st.slider("Yağ Kalori Payı (%)", 20, 45, cur_pct, step=1)
+            b["fat_pct"] = round(new_pct / 100.0, 2)
+
+        preview_kcal = int(b.get("kcal_goal") or 2000)
+        pband_prev = nutrition.protein_band(wkg, int(b.get("height") or 178), mode=b.get("protein_mode", "adjusted"))
+        prev_prot = pband_prev["target"]
+        prev_fat = round(preview_kcal * float(b["fat_pct"]) / 9)
+        prev_carb = max(0, round((preview_kcal - prev_prot * 4 - prev_fat * 9) / 4))
+        p_prev_pct = round((prev_prot * 4) / preview_kcal * 100)
+        f_prev_pct = round((prev_fat * 9) / preview_kcal * 100)
+        c_prev_pct = max(0, 100 - p_prev_pct - f_prev_pct)
+        st.caption(
+            f"🎯 **Güncel Dağılım ({preview_kcal} kcal):** "
+            f"🥩 **{prev_prot}g Protein** ({prev_prot*4} kcal · %{p_prev_pct}) &nbsp;·&nbsp; "
+            f"🥑 **{prev_fat}g Yağ** ({prev_fat*9} kcal · %{f_prev_pct}) &nbsp;·&nbsp; "
+            f"🍚 **{prev_carb}g Karb** ({prev_carb*4} kcal · %{c_prev_pct}) &nbsp;·&nbsp; "
+            f"🥦 **{FIBER_TARGET}g Lif**"
         )
         bd = st.date_input("Doğum tarihi", value=dt.date.fromisoformat(b.get("birth", "1992-03-12")),
                            min_value=dt.date(1940, 1, 1), max_value=TODAY, format="DD.MM.YYYY")

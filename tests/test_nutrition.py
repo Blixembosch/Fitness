@@ -63,3 +63,34 @@ def test_protein_adherence():
     ad = n.protein_adherence(df, 152)
     assert ad["days"] == 3 and ad["met"] == 2
     assert ad["avg_protein"] == 145
+
+
+def test_estimate_targets_fat_and_carbs_distribution():
+    # 2000 kcal, 100 kg, 1.6 g/kg protein = 160g protein (640 kcal)
+    # Balanced (30% fat): 2000 * 0.30 = 600 kcal / 9 = ~67g fat
+    # Carbs: (2000 - 640 - 600) / 4 = 760 / 4 = 190g carbs
+    t_bal = n.estimate_targets(100, 178, 34, protein_per_kg=1.6, fat_pct=0.30, kcal=2000)
+    assert t_bal["kcal"] == 2000
+    assert t_bal["protein"] == 160
+    assert t_bal["fat"] == 67
+    assert t_bal["carbs"] == 189
+
+    # Low fat (25% fat): 2000 * 0.25 = 500 kcal / 9 = ~56g fat
+    # Carbs: (2000 - 640 - 504) / 4 = ~214g carbs
+    t_low = n.estimate_targets(100, 178, 34, protein_per_kg=1.6, fat_pct=0.25, kcal=2000)
+    assert t_low["fat"] == 56
+    assert t_low["carbs"] == 214
+
+
+def test_day_summary_all_macros():
+    entry = {"kcal": 1800, "protein": 150, "carbs": 170, "fat": 60}
+    targets = {"kcal": 2000, "protein": 160, "carbs": 190, "fat": 67}
+    ds = n.day_summary(entry, targets)
+    assert ds["kcal"]["remaining"] == 200
+    assert ds["protein"]["remaining"] == 10
+    assert ds["carbs"]["remaining"] == 20
+    assert ds["fat"]["remaining"] == 7
+    assert ds["protein"]["pct"] == round(150 / 160 * 100)
+    assert ds["carbs"]["pct"] == round(170 / 190 * 100)
+    assert ds["fat"]["pct"] == round(60 / 67 * 100)
+

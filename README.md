@@ -6,11 +6,11 @@ Wegovy (GLP-1) sürecinde **kas kütlesini koruma/artırma, yağ yakımı ve met
 
 ## Özellikler & Ekranlar
 
-- **Ana Sayfa:** Dörtlü aktivite halkaları (antrenman, dinamik padel, protein, kalori hedefi), tek tıkla Padel hızlı kaydı ve hedef ayarı, günün antrenman kartı, kilo değişimi, Wegovy mini-kartı, Google Takvim'den gelen günün maçı bilgisi ve 52 haftalık GitHub katkı grafiği (heatmap).
+- **Ana Sayfa:** Dörtlü aktivite halkaları (antrenman, dinamik padel, protein, kalori hedefi), özel makro durum şeridi (günlük Protein, Sağlıklı Yağ, Karbonhidrat ve Lif tüketimi / kalan miktarlar), tek tıkla Padel hızlı kaydı ve hedef ayarı, günün antrenman kartı, kilo değişimi, Wegovy mini-kartı, Google Takvim'den gelen günün maçı bilgisi ve 52 haftalık GitHub katkı grafiği (heatmap).
 - **Plan:** Pazartesi–Pazar döngülü haftalık takvim ve hafta gezintisi (Hafta 1..12). 25 Ekim 2026 Pazar günü ilk antrenman (Üst A), kalori/protein takibi ve başlangıç tartımıyla resmi program başlar; ilk Wegovy enjeksiyonu ise **27 Ekim 2026 Salı** günü (ve takip eden her Salı) uygulanacak şekilde planlanır. Antrenman programı statik şablon yerine tamamen akıllı ve dinamiktir: Google Takvim'deki Padel maçlarına göre bacak/güç günlerini (örn. Salı padeli öncesi Pazartesi Alt A) ve toparlanma günlerini dinamik olarak dengeler; 1..10 adımlık güç ve bitiriş kartlarını gün gün sunar.
 - **Antrenman:** Numaralandırılmış minimalist adımlar (1..9), egzersiz bazlı kas haritaları, dambıl ağırlık takibi, tek tıkla kalıcı antrenman tamamlama/geri alma ve esnek Padel seansı kaydı & hızlı hedef yönetimi.
-- **İstatistik:** 25 Ekim 2026 resmi başlangıç tarihi bazlı dinamik filtreleme; hafta, ay ve 3 aylık (ISO hafta numaralı) antrenman/padel dağılımı, esnek padel hedeflerine göre güncellenen periyot barları, haftalık % kilo kaybı güvenlik göstergesi (hızlı kas kaybı uyarısı) ve çalışılan kasların görsel anatomik haritası.
-- **Beslenme:** Cronometer dışa aktarım dosyaları (dailysummary, exercises, biometrics) üzerinden kalori, protein, lif ve makro takibi; Wegovy doz/enjeksiyon bölgesi rotasyonu, haftalık dinamik padel hedefi, Google Takvim iCal entegrasyonu ve kalori/protein yönetimi.
+- **İstatistik:** 25 Ekim 2026 resmi başlangıç tarihi bazlı dinamik filtreleme; hafta, ay ve 3 aylık (ISO hafta numaralı) antrenman/padel dağılımı, esnek padel hedeflerine göre güncellenen periyot barları, haftalık % kilo kaybı güvenlik göstergesi (hızlı kas kaybı uyarısı), kanıta dayalı hedefler tablosunda Sağlıklı Yağ ve Karbonhidrat denge takibi ve çalışılan kasların görsel anatomik haritası.
+- **Beslenme:** Cronometer dışa aktarım dosyaları (dailysummary, exercises, biometrics) üzerinden kalori, protein, lif, sağlıklı yağ ve karbonhidrat takibi; Wegovy sindirim konforu ve antrenman performansına göre yapılandırılabilir makro dağılımı (Dengeli %30 Yağ / %38 Karb, Düşük Yağ %25, Orta Yağ %35 veya Özel % slider), canlı makro barları ve son 7 günlük çoklu makro trend grafikleri; Wegovy doz/enjeksiyon bölgesi rotasyonu, haftalık dinamik padel hedefi, Google Takvim iCal entegrasyonu ve kalori/protein yönetimi.
 
 ---
 
@@ -52,7 +52,7 @@ Her güç antrenmanı (Üst A, Alt A, Üst B), glikojen depolarını ve kas küt
 
 ## Test ve Kalite Güvencesi
 
-Proje, 96 otomatik birim, erişilebilirlik ve 5 sayfanın CSS/bileşen bütünlüğünü denetleyen Streamlit `AppTest` fonksiyonel testi ile korunur:
+Proje, 99 otomatik birim, erişilebilirlik ve 5 sayfanın CSS/bileşen bütünlüğünü denetleyen Streamlit `AppTest` fonksiyonel testi ile korunur:
 ```bash
 /usr/local/bin/python3 run_tests.py
 ```

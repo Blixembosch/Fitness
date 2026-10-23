@@ -360,11 +360,34 @@ def test_functional_dynamic_calendar_padel_and_dual_sessions():
             assert not at.exception
             rendered_text = " ".join(str(m.value) for m in at.markdown)
 
-            # Wednesday 28 shows Padel with Isa & Robbert
             assert "Padel with Isa & Robbert" in rendered_text
             assert "TV Meerhoven" in rendered_text
             assert "Google Takvim" in rendered_text
 
 
+def test_functional_macro_targets_and_nutrition_page():
+    """Verify daily fat and carb targets display on Nutrition and Stats pages."""
+    with tempfile.TemporaryDirectory() as td:
+        os.environ["FITNESS_DB_PATH"] = str(Path(td) / "test.db")
+        at = _run_app("nutrition")
+        assert not at.exception
+        t = at.session_state["targets"]
+        assert "fat" in t and "carbs" in t and "protein" in t
+        assert t["fat"] == 67
+        assert t["carbs"] == 189
+        assert t["protein"] == 160
 
+        # Verify nutrition page renders macro target tiles when nt is None
+        rendered = " ".join(str(m.value) for m in at.markdown)
+        assert "Sağlıklı Yağ" in rendered
+        assert "Karbonhidrat" in rendered
+        assert "67" in rendered
+        assert "189" in rendered
 
+        # Switch to stats page and verify evidence-based macro rows
+        at.session_state["page"] = "stats"
+        at.run()
+        assert not at.exception
+        stats_rendered = " ".join(str(m.value) for m in at.markdown)
+        assert "Sağlıklı yağ" in stats_rendered
+        assert "Karbonhidrat" in stats_rendered
