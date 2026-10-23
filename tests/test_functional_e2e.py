@@ -229,3 +229,36 @@ def test_functional_workout_steps_compact_single_line_and_heatmap_fluid():
     assert "minmax(11px,1fr)" not in hm_html
 
 
+def test_functional_plan_page_starts_from_october_25_baseline():
+    """Verify Plan page displays from 25 October baseline and enables week navigation."""
+    with tempfile.TemporaryDirectory() as td:
+        os.environ["FITNESS_DB_PATH"] = str(Path(td) / "test.db")
+        at = _run_app("plan", body={"start_date": "2026-10-25", "theme": "dark"})
+        assert not at.exception
+
+        # 1. Header shows 25 Eki - 31 Eki
+        header_markdowns = [str(m.value) for m in at.markdown if "25 Eki" in str(m.value)]
+        assert len(header_markdowns) > 0
+        assert any("Hafta 1 / 12" in m or "Hafta 1/12" in m for m in header_markdowns)
+
+        # 2. Week navigation buttons present
+        prev_btn = next((b for b in at.button if b.key == "plan_wk_prev"), None)
+        next_btn = next((b for b in at.button if b.key == "plan_wk_next"), None)
+        assert prev_btn is not None
+        assert next_btn is not None
+        assert prev_btn.disabled is True  # Cannot go prior to 25 October
+
+        # 3. 7 day buttons start on 25 (Paz)
+        pd_btns = [b for b in at.button if b.key and b.key.startswith("pd_")]
+        assert len(pd_btns) == 7
+        assert pd_btns[0].label == "25"
+        assert pd_btns[1].label == "26"
+
+        # 4. Next week navigation works
+        next_btn.click().run()
+        assert not at.exception
+        h2_markdowns = [str(m.value) for m in at.markdown if "1 Kas" in str(m.value)]
+        assert len(h2_markdowns) > 0
+
+
+

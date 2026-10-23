@@ -354,15 +354,16 @@ def program_week_grid(week_start: dt.date):
     for i in range(7):
         d = week_start + dt.timedelta(days=i)
         iso = d.strftime("%Y-%m-%d")
-        day = P.DAYS[i]
+        dow_idx = d.weekday()
+        day = P.day_for(dow_idx)
         is_pre_start = iso < START_ISO
         has_str = (iso in strv) and not is_pre_start
         has_pad = (iso in padv) and not is_pre_start
         has_crd = (iso in crdv) and not is_pre_start
 
-        is_plan_pad = "padel" in day["key"].lower()
-        is_plan_lift = day["focus"] in ("upper", "lower", "full")
-        is_plan_crd = bool(P.day_cardio(day))
+        is_plan_pad = ("padel" in day["key"].lower()) and not is_pre_start
+        is_plan_lift = (day["focus"] in ("upper", "lower", "full")) and not is_pre_start
+        is_plan_crd = bool(P.day_cardio(day)) and not is_pre_start
 
         # Dynamic priority: if actual workouts happened, reflect them accurately
         if has_pad and has_str:
@@ -407,7 +408,7 @@ def program_week_grid(week_start: dt.date):
             done = False
 
         planned = is_plan_lift or is_plan_pad or is_plan_crd
-        grid.append({"dow": DOW[i], "day": d.day, "iso": iso, "name": name, "color": color,
+        grid.append({"dow": DOW[dow_idx], "day": d.day, "iso": iso, "name": name, "color": color,
                      "kind": kind, "planned": planned, "done": done})
     return grid
 
@@ -670,38 +671,52 @@ def page_home():
     left, right = st.columns([1.35, 1], gap="medium")
 
     with left:
-        day = P.day_for(TODAY.weekday())
-        color = P.FOCUS_COLOR[day["focus"]]
         st.markdown("<p class='eyebrow'>Bugün</p>", unsafe_allow_html=True)
-        phase, pextra = current_phase()
-        ws = wegovy_status()
-        rpe_lbl = f"RPE {phase['rpe']}" + (" · 💉 48s esnek" if ws["in_48h"] else "")
-        if day["exercises"]:
-            load = P.day_load(day, pextra)
-            steps = P.workout_steps(day, pextra)
-            chips = "".join(f"<span class='chip'>{g}</span>" for g in P.day_groups(day))
-            chips += "<span class='chip' style='color:var(--green)'>🏃 Eliptik 5+10 dk</span>"
-            chips += "<span class='chip' style='color:var(--orange)'>🚣 Kürek 10 dk</span>"
+        if TODAY < START_DATE:
+            days_left = (START_DATE - TODAY).days
+            start_fmt = f"{START_DATE.day} {MON[START_DATE.month-1]}"
             st.markdown(
-                f"<div class='hero' style='background:radial-gradient(130% 90% at 100% 0%, color-mix(in srgb,{color} 30%,transparent), transparent 60%), linear-gradient(165deg, color-mix(in srgb,{color} 14%,var(--surface)), var(--surface) 78%); border:1px solid color-mix(in srgb,{color} 35%,var(--line))'>"
-                f"<div class='kick' style='color:{color}'>● {day['tag']} · {rpe_lbl}</div>"
-                f"<h2>{day['name']}</h2><div class='chiprow'>{chips}</div>"
-                f"<div class='muted' style='font-size:12px;margin-top:6px'>{len(steps)} adım ({load['exercises']} güç + Eliptik & Kürek) · {load['sets']} güç seti + 25 dk yağ yakım kardiyo</div></div>",
+                f"<div class='hero' style='background:linear-gradient(165deg, color-mix(in srgb,var(--blue) 14%,var(--surface)), var(--surface) 80%);border:1px solid color-mix(in srgb,var(--blue) 25%,var(--line))'>"
+                f"<div class='kick' style='color:var(--blue)'>● Hazırlık Dönemi · Başlangıç: {start_fmt} {DOW_LONG[START_DATE.weekday()]}</div>"
+                f"<h2>Program Öncesi Hazırlık</h2>"
+                f"<div class='muted' style='font-size:12.5px;margin-top:6px'>"
+                f"Resmi 12 haftalık programın <b>{start_fmt} {DOW_LONG[START_DATE.weekday()]}</b> günü başlıyor ({days_left} gün kaldı). "
+                f"İğnenin eve ulaşmasıyla ilk Wegovy dozu uygulanacak; bu tarihten önce planlanmış bir antrenman bulunmuyor.</div></div>",
                 unsafe_allow_html=True,
             )
-            st.button("▶ Antrenmana git", type="primary", use_container_width=True, on_click=navigate, args=("workout",))
+            st.button("🗓 25 Ekim Planını İncele", type="primary", use_container_width=True, on_click=navigate, args=("plan",))
         else:
-            cardio = P.day_cardio(day)
-            extra = ""
-            if cardio:
-                chips = "".join(f"<span class='chip'>{P.CARDIO_ICON.get(c['type'],'🔥')} {c['name']} · {c['minutes']} dk</span>" for c in cardio)
-                extra = f"<div class='chiprow' style='margin-top:10px'>{chips}</div>"
-            st.markdown(
-                f"<div class='hero' style='background:linear-gradient(165deg, color-mix(in srgb,{color} 12%,var(--surface)), var(--surface) 80%);border:1px solid var(--line)'>"
-                f"<div class='kick' style='color:{color}'>● {day['tag'] or 'Bugün'}</div>"
-                f"<h2>{day['name']}</h2><div class='muted' style='font-size:12px;margin-top:4px'>{day.get('note','')}</div>{extra}</div>",
-                unsafe_allow_html=True,
-            )
+            day = P.day_for(TODAY.weekday())
+            color = P.FOCUS_COLOR[day["focus"]]
+            phase, pextra = current_phase()
+            ws = wegovy_status()
+            rpe_lbl = f"RPE {phase['rpe']}" + (" · 💉 48s esnek" if ws["in_48h"] else "")
+            if day["exercises"]:
+                load = P.day_load(day, pextra)
+                steps = P.workout_steps(day, pextra)
+                chips = "".join(f"<span class='chip'>{g}</span>" for g in P.day_groups(day))
+                chips += "<span class='chip' style='color:var(--green)'>🏃 Eliptik 5+10 dk</span>"
+                chips += "<span class='chip' style='color:var(--orange)'>🚣 Kürek 10 dk</span>"
+                st.markdown(
+                    f"<div class='hero' style='background:radial-gradient(130% 90% at 100% 0%, color-mix(in srgb,{color} 30%,transparent), transparent 60%), linear-gradient(165deg, color-mix(in srgb,{color} 14%,var(--surface)), var(--surface) 78%); border:1px solid color-mix(in srgb,{color} 35%,var(--line))'>"
+                    f"<div class='kick' style='color:{color}'>● {day['tag']} · {rpe_lbl}</div>"
+                    f"<h2>{day['name']}</h2><div class='chiprow'>{chips}</div>"
+                    f"<div class='muted' style='font-size:12px;margin-top:6px'>{len(steps)} adım ({load['exercises']} güç + Eliptik & Kürek) · {load['sets']} güç seti + 25 dk yağ yakım kardiyo</div></div>",
+                    unsafe_allow_html=True,
+                )
+                st.button("▶ Antrenmana git", type="primary", use_container_width=True, on_click=navigate, args=("workout",))
+            else:
+                cardio = P.day_cardio(day)
+                extra = ""
+                if cardio:
+                    chips = "".join(f"<span class='chip'>{P.CARDIO_ICON.get(c['type'],'🔥')} {c['name']} · {c['minutes']} dk</span>" for c in cardio)
+                    extra = f"<div class='chiprow' style='margin-top:10px'>{chips}</div>"
+                st.markdown(
+                    f"<div class='hero' style='background:linear-gradient(165deg, color-mix(in srgb,{color} 12%,var(--surface)), var(--surface) 80%);border:1px solid var(--line)'>"
+                    f"<div class='kick' style='color:{color}'>● {day['tag'] or 'Bugün'}</div>"
+                    f"<h2>{day['name']}</h2><div class='muted' style='font-size:12px;margin-top:4px'>{day.get('note','')}</div>{extra}</div>",
+                    unsafe_allow_html=True,
+                )
 
     with right:
         w, _ = latest_weight()
@@ -876,50 +891,122 @@ def _cardio_box(c):
 
 
 def page_plan():
-    end = WEEK_START + dt.timedelta(days=6)
-    st.markdown(
-        ui.page_header("Plan", f"{WEEK_START.day} {MON[WEEK_START.month-1]}–{end.day} {MON[end.month-1]} · {P.SESSIONS_PER_WEEK} antrenman"),
-        unsafe_allow_html=True,
-    )
-    phase, extra = current_phase()
     pp = program_progress()
+    # Program starts on START_DATE (e.g. 2026-10-25 Sunday).
+    # If today < START_DATE, base week is Week 1 (starting at START_DATE).
+    # If today >= START_DATE, base week is the elapsed weeks from START_DATE.
+    if TODAY < START_DATE:
+        cur_prog_week = 0
+    else:
+        cur_prog_week = min(PROGRAM_WEEKS - 1, max(0, (TODAY - START_DATE).days // 7))
+
+    # Week index can be navigated by user (0..PROGRAM_WEEKS-1)
+    week_idx = S.get("plan_week_idx")
+    if week_idx is None:
+        week_idx = cur_prog_week
+    week_idx = max(0, min(PROGRAM_WEEKS - 1, int(week_idx)))
+
+    cur_week_start = START_DATE + dt.timedelta(weeks=week_idx)
+    cur_week_end = cur_week_start + dt.timedelta(days=6)
+
+    ph = P.phase_for(week_idx + 1)
+    extra = P.phase_extra_sets(ph)
     status, lines = program_adjustment()
     tint = {"good": "var(--green)", "warn": "var(--orange)", "bad": "var(--red)", "": "var(--blue)"}[status]
-    wk_txt = f"Hafta {pp['week']}/{P.PROGRAM_WEEKS}" if pp["started"] else "Hazırlık"
+
+    badge = f"Hafta {week_idx + 1}/{PROGRAM_WEEKS}"
+    sub = f"{cur_week_start.day} {MON[cur_week_start.month-1]}–{cur_week_end.day} {MON[cur_week_end.month-1]} · {P.SESSIONS_PER_WEEK} antrenman"
+    st.markdown(ui.page_header("Plan", sub, badge=badge), unsafe_allow_html=True)
+
+    # Week Navigator Controls
+    col_prev, col_info, col_next = st.columns([1, 4, 1], gap="small")
+    with col_prev:
+        if st.button("◀ Önceki", key="plan_wk_prev", use_container_width=True, disabled=(week_idx <= 0)):
+            S["plan_week_idx"] = max(0, week_idx - 1)
+            S["plan_day_idx"] = 0
+            st.rerun()
+    with col_info:
+        status_sub = f"{ph['name']} · RPE {ph['rpe']}"
+        if TODAY < START_DATE and week_idx == 0:
+            status_sub += f" · ⏳ Başlangıca {(START_DATE - TODAY).days} gün"
+        st.markdown(
+            f"<div style='text-align:center;padding:2px 0'>"
+            f"<span style='font-weight:800;font-size:13.5px;color:var(--fg)'>Hafta {week_idx + 1} / {PROGRAM_WEEKS}</span> "
+            f"<span class='muted' style='font-size:12px'>({cur_week_start.day} {MON[cur_week_start.month-1]}–{cur_week_end.day} {MON[cur_week_end.month-1]})</span>"
+            f"<div style='font-size:11px;color:{tint};font-weight:700;margin-top:1px'>{status_sub}</div>"
+            f"</div>",
+            unsafe_allow_html=True,
+        )
+    with col_next:
+        if st.button("Sonraki ▶", key="plan_wk_next", use_container_width=True, disabled=(week_idx >= PROGRAM_WEEKS - 1)):
+            S["plan_week_idx"] = min(PROGRAM_WEEKS - 1, week_idx + 1)
+            S["plan_day_idx"] = 0
+            st.rerun()
+
     body = "".join(f"<div style='font-size:12.5px;line-height:1.55;margin-top:5px;color:var(--fg)'>{l}</div>" for l in lines)
     st.markdown(
-        f"<div class='fcard' style='border-color:color-mix(in srgb,{tint} 38%,var(--line))'>"
+        f"<div class='fcard' style='margin-top:6px;border-color:color-mix(in srgb,{tint} 38%,var(--line))'>"
         f"<div style='display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap'>"
         f"<div class='eyebrow' style='margin:0'>Program durumu</div>"
-        f"<div style='font-size:12.5px;font-weight:800;color:{tint}'>{phase['name']} · {wk_txt} · RPE {phase['rpe']}</div></div>"
-        f"<div class='muted' style='font-size:13px;margin-top:6px'>{phase['note']}</div>{body}</div>",
+        f"<div style='font-size:12.5px;font-weight:800;color:{tint}'>{ph['name']} · Hafta {week_idx + 1}/{PROGRAM_WEEKS} · RPE {ph['rpe']}</div></div>"
+        f"<div class='muted' style='font-size:13px;margin-top:6px'>{ph['note']}</div>{body}</div>",
         unsafe_allow_html=True,
     )
-    sel = int(S.get("plan_day", TODAY.weekday()))
+
+    # Determine default day index (0..6)
+    if TODAY < START_DATE:
+        default_day_idx = 0  # 25 Ekim Pazar
+    elif cur_week_start <= TODAY <= cur_week_end:
+        default_day_idx = (TODAY - cur_week_start).days
+    else:
+        default_day_idx = 0
+
+    if "plan_day_idx" not in S:
+        if "plan_day" in S:
+            try:
+                pd_val = int(S["plan_day"])
+                for i in range(7):
+                    if (cur_week_start + dt.timedelta(days=i)).weekday() == pd_val:
+                        S["plan_day_idx"] = i
+                        break
+            except Exception:
+                pass
+        if "plan_day_idx" not in S:
+            S["plan_day_idx"] = default_day_idx
+
+    sel_idx = max(0, min(6, int(S["plan_day_idx"])))
     done = strength_dates_all()
     pad = padel_dates_all()
 
     cols = st.columns(7)
     for i, col in enumerate(cols):
-        d = WEEK_START + dt.timedelta(days=i)
+        d = cur_week_start + dt.timedelta(days=i)
         iso = d.strftime("%Y-%m-%d")
-        day = P.DAYS[i]
+        dow_idx = d.weekday()
+        day = P.day_for(dow_idx)
         color = P.FOCUS_COLOR[day["focus"]]
         dot = "var(--green)" if (iso in done or iso in pad) else (color if day["focus"] != "rest" else "var(--line)")
         with col:
             st.markdown(
-                f"<div style='text-align:center;font-size:11px;color:var(--muted);font-weight:700'>{DOW[i]}"
+                f"<div style='text-align:center;font-size:11px;color:var(--muted);font-weight:700'>{DOW[dow_idx]}"
                 f"<span style='display:inline-block;width:6px;height:6px;border-radius:50%;background:{dot};margin-inline-start:4px;vertical-align:middle'></span></div>",
                 unsafe_allow_html=True,
             )
-            st.button(str(d.day), key=f"pd_{i}", use_container_width=True,
-                      type="primary" if i == sel else "secondary", on_click=lambda i=i: S.__setitem__("plan_day", i))
+            st.button(
+                str(d.day),
+                key=f"pd_{i}",
+                use_container_width=True,
+                type="primary" if i == sel_idx else "secondary",
+                on_click=lambda i=i: S.__setitem__("plan_day_idx", i),
+            )
 
-    day = P.DAYS[sel]
-    color = P.FOCUS_COLOR[day["focus"]]
-    title = "Bugün" if sel == TODAY.weekday() else DOW_LONG[sel]
-    sel_date = WEEK_START + dt.timedelta(days=sel)
+    sel_date = cur_week_start + dt.timedelta(days=sel_idx)
     sel_iso = sel_date.strftime("%Y-%m-%d")
+    sel_dow = sel_date.weekday()
+    day = P.day_for(sel_dow)
+    color = P.FOCUS_COLOR[day["focus"]]
+
+    title = "Bugün" if sel_date == TODAY else f"{DOW_LONG[sel_dow]} · {sel_date.day} {MON[sel_date.month-1]}"
     cal_sel = calendar_sync.padel_event_for_date(sel_iso, calendar_padel_events())
     cal_tag = ""
     if cal_sel:
@@ -927,7 +1014,30 @@ def page_plan():
         cal_tag = f" &nbsp;·&nbsp; <span style='color:var(--teal);font-weight:700'>📅 Google Takvim: {cal_sel['summary']}{t_str}</span>"
     st.markdown(f"<p class='eyebrow' style='margin-top:14px'>{title}{cal_tag}</p>", unsafe_allow_html=True)
 
-    if day["exercises"]:
+    if sel_date < START_DATE:
+        st.markdown(
+            f"<div class='hero' style='background:linear-gradient(165deg, color-mix(in srgb,var(--blue) 12%,var(--surface)), var(--surface) 80%);border:1px solid var(--line)'>"
+            f"<div class='kick' style='color:var(--muted)'>● Program Öncesi</div><h2>Program Başlamadı</h2>"
+            f"<div class='muted' style='font-size:12.5px;margin-top:6px'>"
+            f"Resmi 12 haftalık program <b>{START_DATE.day} {MON[START_DATE.month-1]} {DOW_LONG[START_DATE.weekday()]}</b> günü başlıyor. "
+            f"Bu tarihten önce planlanmış bir antrenman programı bulunmuyor.</div></div>",
+            unsafe_allow_html=True,
+        )
+    elif sel_date == START_DATE and day["focus"] == "rest":
+        st.markdown(
+            f"<div class='hero' style='background:radial-gradient(130% 90% at 100% 0%, color-mix(in srgb,var(--purple) 30%,transparent), transparent 60%), linear-gradient(165deg, color-mix(in srgb,var(--purple) 14%,var(--surface)), var(--surface) 78%);border:1px solid color-mix(in srgb,var(--purple) 32%,var(--line))'>"
+            f"<div class='kick' style='color:var(--purple)'>● 💉 1. Doz Wegovy & Resmi Program Başlangıcı</div><h2>{day['name']} & Program Başlangıcı</h2>"
+            f"<div class='chiprow'>"
+            f"<span class='chip' style='color:var(--purple)'>💉 Wegovy 0.25 mg</span>"
+            f"<span class='chip' style='color:var(--green)'>⚖️ Başlangıç Tartımı</span>"
+            f"<span class='chip'>😴 Dinlenme & Hidrasyon</span>"
+            f"</div>"
+            f"<div class='muted' style='font-size:12.5px;margin-top:8px'>"
+            f"12 haftalık Wegovy koruma ve yağ yakım programının resmi başlangıç günü. İlk Wegovy dozunu (0.25 mg) uygula, başlangıç kilonu kaydet ve dinlen. "
+            f"Yarın ({DOW_LONG[(sel_date + dt.timedelta(days=1)).weekday()]}) <b>Üst A</b> ile ilk güç antrenmanı başlıyor!</div></div>",
+            unsafe_allow_html=True,
+        )
+    elif day["exercises"]:
         load = P.day_load(day, extra)
         steps = P.workout_steps(day, extra)
         chips = "".join(f"<span class='chip'>{g}</span>" for g in P.day_groups(day))
@@ -935,14 +1045,14 @@ def page_plan():
         chips += "<span class='chip' style='color:var(--orange)'>🚣 Kürek 10 dk</span>"
         st.markdown(
             f"<div class='hero' style='background:radial-gradient(130% 90% at 100% 0%, color-mix(in srgb,{color} 28%,transparent), transparent 60%), linear-gradient(165deg, color-mix(in srgb,{color} 13%,var(--surface)), var(--surface) 80%);border:1px solid color-mix(in srgb,{color} 32%,var(--line))'>"
-            f"<div class='kick' style='color:{color}'>● {day['tag']} · RPE {phase['rpe']}</div><h2>{day['name']}</h2>"
+            f"<div class='kick' style='color:{color}'>● {day['tag']} · RPE {ph['rpe']}</div><h2>{day['name']}</h2>"
             f"<div class='chiprow'>{chips}</div>"
             f"<div class='muted' style='font-size:13px;margin-top:8px'>{len(steps)} numaralı adım ({load['exercises']} güç + Eliptik ısınma + Kürek & Eliptik yağ yakım) · ~{load['minutes']+25} dk</div></div>",
             unsafe_allow_html=True,
         )
         boxes = "".join(_plan_step_box(i, e, color) for i, e in enumerate(steps, 1))
         st.markdown(f"<div class='exgrid'>{boxes}</div>", unsafe_allow_html=True)
-        if sel == TODAY.weekday():
+        if sel_date == TODAY:
             st.markdown("<div style='height:8px'></div>", unsafe_allow_html=True)
             c = st.columns([1, 1, 1])[0]
             c.button("▶ Antrenmana git", type="primary", use_container_width=True, on_click=navigate, args=("workout",))
